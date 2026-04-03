@@ -1,0 +1,37 @@
+[package]
+name = "lifesavor-skill-sdk"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+description = "Life Savor Skill SDK — build skill providers using the SkillProvider trait"
+repository = "https://github.com/lifesavor/lifesavor-agent"
+homepage = "https://developer.lifesavor.ai"
+keywords = ["lifesavor", "sdk", "skill", "provider", "agent"]
+categories = ["development-tools", "api-bindings"]
+readme = "README.md"
+
+[features]
+default = []
+mcp = []
+analytics = []
+
+[dependencies]
+lifesavor-agent = { path = "../../agent-source-cross-platform" }
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+tracing = "0.1"
+tokio = { version = "1.36", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.7", features = ["v4", "serde"] }
+async-trait = "0.1"
+
+[[bin]]
+name = "sandbox-runner"
+path = "src/bin/sandbox_runner.rs"
+
+[dev-dependencies]
+proptest = "1.4"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }

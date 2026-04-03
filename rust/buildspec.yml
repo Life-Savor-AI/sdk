@@ -1,0 +1,90 @@
+version: 0.2
+
+# SDK workspace CI — build, test, lint, doc, MSRV, semver-checks
+phases:
+  install:
+    commands:
+      - echo "Installing Rust toolchain..."
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - export PATH="$HOME/.cargo/bin:$PATH"
+      - rustup toolchain install stable
+      - rustup default stable
+      - rustc --version
+      - cargo --version
+      - echo "Installing MSRV toolchain (1.75)..."
+      - rustup toolchain install 1.75
+      - echo "Installing cargo-semver-checks..."
+      - cargo install cargo-semver-checks --locked
+      - echo "Installing clippy..."
+      - rustup component add clippy
+
+  pre_build:
+    commands:
+      - echo "Checking for changes in SDK/ or agent-source-cross-platform/src/..."
+      - |
+        PREV_BUILD=$(aws codebuild list-builds-for-project \
+          --project-name $PROJECT_NAME-$ENVIRONMENT-build \
+          --query 'ids[1]' \
+          --output text \
+          --region $AWS_REGION 2>/dev/null || echo "None")
+
+        if [ "$PREV_BUILD" != "None" ] && [ ! -z "$PREV_BUILD" ]; then
+          PREV_COMMIT=$(aws codebuild batch-get-builds \
+            --ids $PREV_BUILD \
+            --query 'builds[0].resolvedSourceVersion' \
+            --output text \
+            --region $AWS_REGION 2>/dev/null || echo "")
+
+          if [ ! -z "$PREV_COMMIT" ]; then
+            echo "Previous commit: $PREV_COMMIT"
+            echo "Current commit: $CODEBUILD_RESOLVED_SOURCE_VERSION"
+
+            SDK_CHANGED=$(git diff --name-only $PREV_COMMIT $CODEBUILD_RESOLVED_SOURCE_VERSION -- SDK/ | head -1)
+            AGENT_CHANGED=$(git diff --name-only $PREV_COMMIT $CODEBUILD_RESOLVED_SOURCE_VERSION -- agent-source-cross-platform/src/ | head -1)
+
+            if [ -z "$SDK_CHANGED" ] && [ -z "$AGENT_CHANGED" ]; then
+              echo "No changes detected in SDK/ or agent-source-cross-platform/src/, skipping build"
+              exit 0
+            else
+              echo "Changes detected, proceeding with build"
+            fi
+          fi
+        else
+          echo "No previous build found, proceeding with build"
+        fi
+      - export PATH="$HOME/.cargo/bin:$PATH"
+
+  build:
+    commands:
+      - export PATH="$HOME/.cargo/bin:$PATH"
+      - cd SDK
+
+      - echo "=== cargo build (workspace) ==="
+      - cargo build
+
+      - echo "=== cargo test (all crates) ==="
+      - cargo test
+
+      - echo "=== cargo build --examples ==="
+      - cargo build --examples
+
+      - echo "=== cargo doc --no-deps ==="
+      - cargo doc --no-deps
+
+      - echo "=== cargo clippy -- -D warnings ==="
+      - cargo clippy -- -D warnings
+
+      - echo "=== MSRV build (Rust 1.75) ==="
+      - cargo +1.75 build
+
+      - echo "=== cargo-semver-checks ==="
+      - cargo semver-checks check-release --package lifesavor-system-sdk || true
+      - cargo semver-checks check-release --package lifesavor-model-sdk || true
+      - cargo semver-checks check-release --package lifesavor-assistant-sdk || true
+      - cargo semver-checks check-release --package lifesavor-skill-sdk || true
+      - echo "SDK CI pipeline completed successfully"
+
+cache:
+  paths:
+    - '/root/.cargo/**/*'
+    - 'SDK/target/**/*'

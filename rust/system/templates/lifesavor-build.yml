@@ -1,0 +1,20 @@
+# Life Savor Build Configuration
+# This file configures the Developer Portal's CodeBuild pipeline for your component.
+# See: https://developer.stage.lifesavor.ai/docs/build-config
+
+runtime: rust-stable
+
+build:
+  commands:
+    - cargo build --release
+
+test:
+  commands:
+    - cargo test
+
+# Optional: environment variables available during build
+# env:
+#   RUST_LOG: info
+
+# Optional: output directory for build artifacts
+# output_dir: target/release

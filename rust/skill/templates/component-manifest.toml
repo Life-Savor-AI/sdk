@@ -1,0 +1,53 @@
+# Component Manifest for Life Savor Developer Portal
+# This file declares metadata about your component for marketplace listing and QA review.
+# See: https://developer.stage.lifesavor.ai/docs/component-manifest
+
+name = "my-skill"
+type = "skill_provider"
+version = "0.1.0"
+description = "A Life Savor skill provider"
+license = "MIT"
+
+# Agent version compatibility range
+# compatibility = ">=0.1.0"
+
+# Marketplace tags for discoverability
+# tags = ["skill", "utility"]
+
+# Marketplace category
+# category = "skill"
+
+# --- Security-Relevant Fields ---
+# These fields are reviewed during QA submission. Declare all access your component requires.
+
+# vault_keys: Vault key names your component will request via CredentialManager.
+# Only keys listed here can be resolved; others return AccessDenied.
+# vault_keys = ["SKILL_API_KEY"]
+
+# env_vars: Environment variables your component reads at runtime.
+# Undeclared env var access is flagged as a sandbox violation.
+# env_vars = ["HOME", "PATH"]
+
+# filesystem_paths: Filesystem paths your component accesses.
+# Access outside these paths is flagged as a sandbox violation.
+# filesystem_paths = ["/tmp"]
+
+# network_endpoints: External network endpoints your component connects to.
+# network_endpoints = ["https://api.example.com"]
+
+# max_output_bytes: Maximum output size in bytes (for sandbox enforcement).
+# max_output_bytes = 1048576
+
+# --- Status Badges ---
+# Uncomment and replace "my-skill" with your component slug.
+# [[badges]]
+# badge_type = "build"
+# url = "https://developer.stage.lifesavor.ai/badges/my-skill/build.svg"
+#
+# [[badges]]
+# badge_type = "version"
+# url = "https://developer.stage.lifesavor.ai/badges/my-skill/version.svg"
+#
+# [[badges]]
+# badge_type = "installs"
+# url = "https://developer.stage.lifesavor.ai/badges/my-skill/installs.svg"

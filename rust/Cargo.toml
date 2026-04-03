@@ -1,0 +1,3 @@
+[workspace]
+members = ["system", "model", "assistant", "skill", "tests-cross-sdk"]
+resolver = "2"

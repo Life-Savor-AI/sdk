@@ -1,0 +1,20 @@
+[package]
+name = "lifesavor-tests-cross-sdk"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+lifesavor-system-sdk = { path = "../system" }
+lifesavor-model-sdk = { path = "../model" }
+lifesavor-assistant-sdk = { path = "../assistant" }
+lifesavor-skill-sdk = { path = "../skill" }
+lifesavor-agent = { path = "../../agent-source-cross-platform" }
+proptest = "1.4"
+tokio = { version = "1.36", features = ["full"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+
+[lib]
+name = "lifesavor_tests_cross_sdk"
+path = "src/lib.rs"
