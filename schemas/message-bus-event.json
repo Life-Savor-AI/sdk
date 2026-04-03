@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://developer.lifesavor.ai/schemas/message-bus-event.json",
+  "title": "MessageBusEvent",
+  "description": "A structured event emitted by messaging/voice system components over the WebSocket relay (control-connect).",
+  "type": "object",
+  "required": [
+    "event_type",
+    "component_id",
+    "user_id",
+    "timestamp",
+    "correlation_id",
+    "payload"
+  ],
+  "properties": {
+    "event_type": {
+      "type": "string",
+      "description": "The type of event.",
+      "enum": [
+        "inbound_message",
+        "message_sent",
+        "rcs_read_receipt",
+        "rcs_typing_indicator",
+        "call_incoming",
+        "call_outbound",
+        "call_ended",
+        "call_forwarded",
+        "voicemail_received",
+        "delivery_status_updated",
+        "component_health_changed",
+        "usage_updated",
+        "call_transfer_initiated",
+        "call_transfer_completed",
+        "call_transfer_failed",
+        "optout_processed",
+        "optin_processed",
+        "component_update_available",
+        "component_update_started",
+        "component_update_completed",
+        "component_update_failed"
+      ]
+    },
+    "component_id": {
+      "type": "string",
+      "description": "Identifier of the component that generated this event."
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Identifier of the user associated with this event."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC timestamp in ISO 8601 format."
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Correlation ID for distributed tracing."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific data.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}
