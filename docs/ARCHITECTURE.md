@@ -10,6 +10,27 @@ The Life Savor Developer Platform consists of:
 - **Marketplace** — Component discovery and installation
 - **CLI** (`lsai-cli`) — Rust command-line tool for developer workflows
 
+## Rust SDK Dependency Graph
+
+The Rust SDK uses a dependency inversion pattern to keep component crates lightweight:
+
+```
+Component Crates (tts, stt, sql-vec, ...)
+        │
+        ▼
+lifesavor-system-sdk          lifesavor-agent
+        │                           │
+        ▼                           ▼
+    lifesavor-agent-types  ◄────────┘
+```
+
+- **`lifesavor-agent-types`** (`sdk/rust/agent/`) — Single source of truth for all shared interface types (traits, structs, enums). Zero runtime dependencies.
+- **`lifesavor-system-sdk`** (`sdk/rust/system/`) — Re-exports types from `agent-types` plus SDK-owned utilities (builder, health, testing, etc.).
+- **`lifesavor-agent`** (`agents/cross-platform/source/`) — The agent runtime. Depends on `agent-types` and re-exports shared types for backward compatibility.
+- **Component crates** — Depend only on `lifesavor-system-sdk`. No direct dependency on the agent runtime.
+
+This means building a component crate does not compile the agent binary or any of its heavy transitive dependencies (tokio full, reqwest, rusqlite, webrtc, etc.).
+
 ## Component Lifecycle
 
 ```

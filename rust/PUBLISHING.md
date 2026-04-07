@@ -65,22 +65,27 @@ cargo publish --dry-run --manifest-path skill/Cargo.toml
 ```
 
 Verify:
+
 - No missing files (README, LICENSE, templates)
 - All dependencies resolve
 - Package metadata is complete
 
 ### 5. Publish (in dependency order)
 
-The crates have no inter-dependencies, so they can be published in any order. However, for consistency:
+The `lifesavor-agent-types` crate must be published first since other SDK crates depend on it:
 
 ```bash
+# 1. Shared types crate (no dependencies on other lifesavor crates)
+cargo publish --manifest-path agent/Cargo.toml
+
+# 2. SDK crates (depend on agent-types, but not on each other)
 cargo publish --manifest-path system/Cargo.toml
 cargo publish --manifest-path model/Cargo.toml
 cargo publish --manifest-path assistant/Cargo.toml
 cargo publish --manifest-path skill/Cargo.toml
 ```
 
-Wait for each crate to appear on crates.io before publishing the next (usually a few seconds).
+Wait for `lifesavor-agent-types` to appear on crates.io before publishing the SDK crates.
 
 ### 6. Post-Publish Verification
 
@@ -88,6 +93,7 @@ After publishing, verify each crate:
 
 1. Check the crate page on crates.io renders correctly (README, metadata, feature flags)
 2. In a fresh directory, create a test project depending on the published version:
+
    ```bash
    cargo init verify-sdk && cd verify-sdk
    cargo add lifesavor-system-sdk
@@ -96,6 +102,7 @@ After publishing, verify each crate:
    cargo add lifesavor-skill-sdk
    cargo check
    ```
+
 3. Verify `cargo doc` generates documentation without warnings
 4. Tag the release in git: `git tag -a sdk-v0.1.0 -m "SDK Suite v0.1.0"`
 
@@ -104,6 +111,6 @@ After publishing, verify each crate:
 | Issue | Solution |
 |-------|----------|
 | `cargo publish` fails with "crate already exists" | The version was already published. Bump the version and try again. |
-| Missing `lifesavor-agent` dependency | The agent crate uses a path dependency. For crates.io, update to a version dependency or use `[patch]`. |
+| Missing `lifesavor-agent` dependency | For crates.io, `lifesavor-agent-types` uses a version dependency. Publish `agent-types` first, then the SDK crates. |
 | Semver check fails unexpectedly | If the change is intentional, bump the major version and add a migration guide. |
 | Dry-run passes but publish fails | Check crates.io rate limits. Wait a minute and retry. |

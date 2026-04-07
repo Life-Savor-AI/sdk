@@ -6,12 +6,12 @@ System components are privileged, in-process modules that provide core agent cap
 
 ## Target Trait
 
-[`SystemComponent`](https://docs.rs/lifesavor-agent/latest/lifesavor_agent/system_components/trait.SystemComponent.html) — defines `initialize`, `health_check`, and `shutdown` lifecycle methods plus component name and type metadata.
+[`SystemComponent`](https://docs.rs/lifesavor-agent-types/latest/lifesavor_agent_types/system_component/trait.SystemComponent.html) — defines `initialize`, `health_check`, and `shutdown` lifecycle methods plus component name and type metadata.
 
 ## Prerequisites
 
 - Rust toolchain **1.75+** (edition 2021)
-- Access to the `lifesavor-agent` crate (path dependency or published version)
+- Access to the `lifesavor-system-sdk` crate (path dependency or published version)
 - Familiarity with `async-trait` and `tokio`
 
 ## Quickstart
@@ -47,16 +47,10 @@ async fn main() -> lifesavor_system_sdk::error::Result<()> {
 
 | Flag | Description |
 |------|-------------|
-| `tts` | TTS system component types |
-| `stt` | STT system component types |
-| `file-storage` | File storage component types |
-| `messaging` | Messaging component types |
-| `calendar` | Calendar component types |
-| `device-control` | Device control component types |
-| `cache` | Cache component types |
 | `analytics` | Developer Portal analytics reporting |
+| `llm` | Ollama LLM component types (requires agent crate) |
 
-All features are disabled by default. Enable only what you need.
+Most shared types (SystemComponent, bridge, streaming, manifest, etc.) are available without any feature flags since they come from `lifesavor-agent-types`.
 
 ## Examples
 
@@ -74,9 +68,13 @@ All features are disabled by default. Enable only what you need.
 
 ## Architecture
 
-This SDK is a thin re-export layer over the `lifesavor-agent` crate. Types like `ProviderManifest`, `ErrorChain`, and `StreamingEnvelope` are the identical Rust types from the agent — no duplication, no drift.
+This SDK is a thin re-export layer over the `lifesavor-agent-types` crate. Types like `ProviderManifest`, `ErrorChain`, and `StreamingEnvelope` are the identical Rust types used by the agent — no duplication, no drift. Component crates depend only on this SDK, not on the agent runtime.
 
-See the [pluggable integration architecture spec](../../.kiro/specs/agent-pluggable-integrations/) for detailed design context.
+```
+your-component → lifesavor-system-sdk → lifesavor-agent-types
+```
+
+See the [SDK architecture docs](../../docs/ARCHITECTURE.md) for the full dependency graph.
 
 ## License
 

@@ -31,7 +31,11 @@ cargo install --git https://github.com/lifesavorai/lsai-cli.git
 
 ```toml
 [dependencies]
-lifesavor-sdk = { git = "https://github.com/lifesavorai/sdk-rust.git" }
+# For system components:
+lifesavor-system-sdk = { git = "https://github.com/lifesavorai/sdk.git" }
+
+# The SDK re-exports all shared types from lifesavor-agent-types.
+# No need to depend on the agent crate directly.
 ```
 
 ## Authentication

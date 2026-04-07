@@ -5,11 +5,39 @@ Aggregated notable changes across all four SDK crates. For per-crate details, se
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-04-07
+
+### Added
+
+#### lifesavor-agent-types (NEW)
+
+- New crate at `rust/agent/` — single source of truth for all shared interface types
+- Modules: `system_component`, `bridge`, `streaming`, `error_chain`, `manifest`, `sandbox`, `credential`
+- Zero runtime dependencies (no tokio, no agent-specific crates)
+- 65 tests including property-based serde round-trip tests for all serializable types
+- `CredentialResolver` async trait extracted from agent's `CredentialManager`
+- `SystemComponent` trait with generic error type (`Box<dyn Error + Send + Sync>`)
+
+### Changed
+
+#### lifesavor-system-sdk
+
+- **BREAKING**: Depends on `lifesavor-agent-types` instead of `lifesavor-agent`
+- **BREAKING**: Removed agent runtime types from re-exports (`SystemComponentRegistry`, `SystemComponentBridge`, `BridgeRateLimiter`, `ProcessSandbox`)
+- **BREAKING**: `CredentialManager` replaced with `CredentialResolver` trait
+- **BREAKING**: Per-component feature flags (`tts`, `stt`, etc.) removed — shared types always available
+- Added `bridge_validation` module and health reporting types
+
+#### tests-cross-sdk
+
+- Added type identity integration tests verifying types from `agent-types` equal SDK re-exports
+
 ## [0.1.0] - 2025-01-01
 
 ### Added
 
 #### All SDKs
+
 - Re-exports of agent crate traits, shared types, error types, and manifest structures
 - Per-SDK `thiserror`-based error enums with `From` conversions and `into_error_context()`
 - `HealthCheckBuilder` supporting `HttpGet`, `ConnectionTest`, `ProcessAlive` methods
@@ -21,24 +49,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Per-crate documentation: `README.md`, `COMPATIBILITY.md`, `CHANGELOG.md`, `docs/GETTING_STARTED.md`, `docs/DEPLOYMENT.md`
 
 #### lifesavor-system-sdk
+
 - `SystemComponentBuilder` for ergonomic component construction
 - `MockAgentContext` test harness for isolated lifecycle testing
 - Feature flags: `tts`, `stt`, `file-storage`, `messaging`, `calendar`, `device-control`, `cache`
 - Examples: `tts_component`, `cache_component`, `bridge_consumer`, `sandbox_compliance`
 
 #### lifesavor-model-sdk
+
 - `ModelProviderBuilder` for scaffold generation with manifest type validation
 - `MockRegistry` test harness for provider registration and routing
 - Feature flags: `bedrock`, `openai`
 - Examples: `ollama_provider`, `mock_provider`, `hot_cold_management`, `sandbox_compliance`
 
 #### lifesavor-assistant-sdk
+
 - `AssistantDefinitionBuilder` with required field validation and template variable checking
 - `AssistantProviderBuilder` for scaffold generation with manifest type validation
 - `MockAssistantStore` test harness for definition storage simulation
 - Examples: `local_fs_provider`, `assistant_definition`, `validation`, `sandbox_compliance`
 
 #### lifesavor-skill-sdk
+
 - `SkillProviderBuilder` with JSON stdin/stdout scaffold and manifest type validation
 - `ToolSchemaBuilder` with JSON Schema input validation
 - `SandboxComplianceChecker` for local sandbox constraint verification

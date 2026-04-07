@@ -2,9 +2,10 @@
 
 ## SDK ↔ Agent Version Mapping
 
-| SDK Version | Agent Version | Notes |
-|-------------|---------------|-------|
-| 0.1.0 | 0.x.x | Initial release, path dependency on `lifesavor-agent` |
+| SDK Version | Agent Version | Agent-Types Version | Notes |
+|-------------|---------------|---------------------|-------|
+| 0.2.0 | 0.5.x | 0.1.0 | SDK depends on `agent-types` instead of `agent`. Component crates no longer need agent dependency. |
+| 0.1.0 | 0.x.x | N/A | Initial release, path dependency on `lifesavor-agent` |
 
 ## Rust Toolchain
 

@@ -13,11 +13,13 @@ Add the SDK dependency to `Cargo.toml`:
 
 ```toml
 [dependencies]
-lifesavor-system-sdk = { path = "../SDK/system" }
+lifesavor-system-sdk = { path = "../../../sdk/rust/system" }
 tokio = { version = "1", features = ["full"] }
 async-trait = "0.1"
 tracing = "0.1"
 ```
+
+That's it — no need to depend on `lifesavor-agent` directly. All shared types (traits, enums, structs) come through the SDK.
 
 ## 2. Implement Your Component
 
