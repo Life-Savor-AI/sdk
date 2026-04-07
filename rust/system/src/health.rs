@@ -221,3 +221,130 @@ mod tests {
         );
     }
 }
+
+// ---------------------------------------------------------------------------
+// Health reporting types for component metrics (Req 43.1)
+// ---------------------------------------------------------------------------
+
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+use serde::{Deserialize, Serialize};
+
+/// Health status of a component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HealthStatus {
+    Healthy,
+    Degraded,
+    Unhealthy,
+}
+
+/// Resource usage snapshot.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResourceUsage {
+    pub cpu_percent: f64,
+    pub memory_bytes: u64,
+    pub disk_bytes: Option<u64>,
+}
+
+/// Structured health summary for a component.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthSummary {
+    pub status: HealthStatus,
+    pub consecutive_failures: u32,
+    pub last_error: Option<String>,
+    pub dependencies_status: HashMap<String, HealthStatus>,
+    pub resource_usage: ResourceUsage,
+}
+
+/// Definition of a metric emitted by a component.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MetricDefinition {
+    pub name: String,
+    pub description: String,
+    pub unit: String,
+}
+
+/// Aggregated metrics snapshot for a component.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComponentMetrics {
+    pub component_id: String,
+    pub component_type: crate::SystemComponentType,
+    pub request_count: u64,
+    pub error_count: u64,
+    pub latency_p50_ms: f64,
+    pub latency_p99_ms: f64,
+    pub custom_metrics: HashMap<String, serde_json::Value>,
+}
+
+/// Trait for components that report health metrics.
+pub trait ComponentHealthReporter {
+    fn report_metrics(&self) -> ComponentMetrics;
+    fn metric_definitions(&self) -> Vec<MetricDefinition>;
+    fn health_summary(&self) -> HealthSummary;
+}
+
+/// Collector for standard component metrics (request count, error count, latency).
+pub struct MetricsCollector {
+    component_id: String,
+    component_type: crate::SystemComponentType,
+    request_count: AtomicU64,
+    error_count: AtomicU64,
+    latencies: std::sync::Mutex<Vec<f64>>,
+}
+
+impl MetricsCollector {
+    /// Create a new metrics collector for the given component.
+    pub fn new(component_id: &str, component_type: crate::SystemComponentType) -> Self {
+        Self {
+            component_id: component_id.to_string(),
+            component_type,
+            request_count: AtomicU64::new(0),
+            error_count: AtomicU64::new(0),
+            latencies: std::sync::Mutex::new(Vec::new()),
+        }
+    }
+
+    /// Record a successful request with the given latency in milliseconds.
+    pub fn record_request(&self, latency_ms: f64) {
+        self.request_count.fetch_add(1, Ordering::Relaxed);
+        if let Ok(mut latencies) = self.latencies.lock() {
+            latencies.push(latency_ms);
+        }
+    }
+
+    /// Record an error.
+    pub fn record_error(&self, _code: &str) {
+        self.error_count.fetch_add(1, Ordering::Relaxed);
+    }
+
+    /// Take a snapshot of the current metrics.
+    pub fn snapshot(&self) -> ComponentMetrics {
+        let latencies = self.latencies.lock().map(|l| l.clone()).unwrap_or_default();
+        let (p50, p99) = percentiles(&latencies);
+
+        ComponentMetrics {
+            component_id: self.component_id.clone(),
+            component_type: self.component_type,
+            request_count: self.request_count.load(Ordering::Relaxed),
+            error_count: self.error_count.load(Ordering::Relaxed),
+            latency_p50_ms: p50,
+            latency_p99_ms: p99,
+            custom_metrics: HashMap::new(),
+        }
+    }
+}
+
+/// Compute p50 and p99 percentiles from a slice of latencies.
+fn percentiles(latencies: &[f64]) -> (f64, f64) {
+    if latencies.is_empty() {
+        return (0.0, 0.0);
+    }
+    let mut sorted = latencies.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let p50_idx = (sorted.len() as f64 * 0.50) as usize;
+    let p99_idx = (sorted.len() as f64 * 0.99) as usize;
+    let p50 = sorted.get(p50_idx.min(sorted.len() - 1)).copied().unwrap_or(0.0);
+    let p99 = sorted.get(p99_idx.min(sorted.len() - 1)).copied().unwrap_or(0.0);
+    (p50, p99)
+}

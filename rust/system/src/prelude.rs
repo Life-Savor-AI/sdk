@@ -7,12 +7,10 @@ pub use crate::{
     SystemComponentType,
     ComponentHealthStatus,
     SystemComponentInfo,
-    SystemComponentRegistry,
 };
 
 // Bridge protocol
 pub use crate::{
-    SystemComponentBridge,
     BridgeRequest,
     BridgeResponse,
     BridgeError,
@@ -46,15 +44,12 @@ pub use crate::{
 
 // Credentials
 pub use crate::{
-    CredentialManager,
+    CredentialResolver,
     ResolvedCredential,
     CredentialError,
     AuthConfig,
     CredentialSource,
 };
-
-// Process sandbox
-pub use crate::ProcessSandbox;
 
 // Tracing
 pub use tracing::{info, warn, error, debug, trace, instrument};

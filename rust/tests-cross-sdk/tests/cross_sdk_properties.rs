@@ -424,6 +424,7 @@ fn vault_key_allowlist_rejects_forbidden_keys() {
 
     rt.block_on(async {
         use lifesavor_agent::vault::access_control::{VaultAccessControl, VaultAccessPolicy};
+        use lifesavor_agent::providers::credential_manager::CredentialManager;
 
         // Set up an allowlist: actor "test-provider" may access ["allowed-key-1", "allowed-key-2"]
         let mut ac = VaultAccessControl::new();
@@ -435,7 +436,7 @@ fn vault_key_allowlist_rejects_forbidden_keys() {
         ac.register_policy(policy);
         let ac = Arc::new(RwLock::new(ac));
 
-        let mgr = lifesavor_system_sdk::CredentialManager::new(None, ac);
+        let mgr = CredentialManager::new(None, ac);
 
         // Attempt to resolve a key NOT in the allowlist → should get VaultAccessDenied
         let auth = lifesavor_system_sdk::AuthConfig {
@@ -448,7 +449,7 @@ fn vault_key_allowlist_rejects_forbidden_keys() {
 
         let err = mgr.resolve(&auth, "test-provider", "corr-cross-1").await.unwrap_err();
         assert!(
-            matches!(err, lifesavor_system_sdk::CredentialError::VaultAccessDenied(_)),
+            matches!(err, lifesavor_agent::providers::credential_manager::CredentialError::VaultAccessDenied(_)),
             "Expected VaultAccessDenied for forbidden key, got: {err:?}"
         );
     });
@@ -465,6 +466,7 @@ fn vault_key_allowlist_permits_allowed_keys() {
 
     rt.block_on(async {
         use lifesavor_agent::vault::access_control::{VaultAccessControl, VaultAccessPolicy};
+        use lifesavor_agent::providers::credential_manager::CredentialManager;
 
         let mut ac = VaultAccessControl::new();
         let policy = VaultAccessPolicy::new(
@@ -475,7 +477,7 @@ fn vault_key_allowlist_permits_allowed_keys() {
         ac.register_policy(policy);
         let ac = Arc::new(RwLock::new(ac));
 
-        let mgr = lifesavor_system_sdk::CredentialManager::new(None, ac);
+        let mgr = CredentialManager::new(None, ac);
 
         // Attempt to resolve a key that IS in the allowlist
         let auth = lifesavor_system_sdk::AuthConfig {
@@ -490,7 +492,7 @@ fn vault_key_allowlist_permits_allowed_keys() {
         // The key passes the allowlist check but the vault is None, so we get
         // a VaultError (not VaultAccessDenied).
         match result {
-            Err(lifesavor_system_sdk::CredentialError::VaultAccessDenied(_)) => {
+            Err(lifesavor_agent::providers::credential_manager::CredentialError::VaultAccessDenied(_)) => {
                 panic!("Should NOT get VaultAccessDenied for an allowed key");
             }
             _ => {
@@ -499,4 +501,27 @@ fn vault_key_allowlist_permits_allowed_keys() {
             }
         }
     });
+}
+
+// ---------------------------------------------------------------------------
+// Type identity: agent-types ↔ SDK re-export (Phase 3, Req 12.1)
+// ---------------------------------------------------------------------------
+
+/// **Validates: Requirements 12.1**
+///
+/// A `SystemComponentType::Tts` constructed via `lifesavor_agent_types` is the
+/// exact same Rust type as one obtained through the `lifesavor_system_sdk`
+/// re-export. This is a compile-time + runtime assertion: if the types were
+/// different, the equality check would not compile.
+#[test]
+fn system_component_type_identity_agent_types_vs_sdk() {
+    let from_agent_types = lifesavor_agent_types::system_component::SystemComponentType::Tts;
+    let from_sdk: lifesavor_system_sdk::SystemComponentType = lifesavor_system_sdk::SystemComponentType::Tts;
+
+    // Compile-time proof: assigning across crate boundaries only works if same type.
+    let _cross: &lifesavor_agent_types::system_component::SystemComponentType = &from_sdk;
+    let _cross2: &lifesavor_system_sdk::SystemComponentType = &from_agent_types;
+
+    // Runtime equality check.
+    assert_eq!(from_agent_types, from_sdk, "SystemComponentType::Tts must be identical across agent-types and SDK");
 }

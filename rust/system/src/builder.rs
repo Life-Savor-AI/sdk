@@ -32,9 +32,9 @@ use crate::error::SystemSdkError;
 // ---------------------------------------------------------------------------
 
 /// Closure type for `initialize` and `shutdown` — `FnMut` returning a pinned
-/// future that resolves to `Result<(), AgentError>`.
+/// future that resolves to `Result<(), Box<dyn Error>>`.
 type InitShutdownFn = Box<
-    dyn FnMut() -> Pin<Box<dyn Future<Output = lifesavor_agent::error::Result<()>> + Send>>
+    dyn FnMut() -> Pin<Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>>
         + Send
         + Sync,
 >;
@@ -81,7 +81,7 @@ impl SystemComponentBuilder {
     /// pinned future resolving to `Result<()>`.
     pub fn on_initialize<F>(mut self, f: F) -> Self
     where
-        F: FnMut() -> Pin<Box<dyn Future<Output = lifesavor_agent::error::Result<()>> + Send>>
+        F: FnMut() -> Pin<Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>>
             + Send
             + Sync
             + 'static,
@@ -111,7 +111,7 @@ impl SystemComponentBuilder {
     /// pinned future resolving to `Result<()>`.
     pub fn on_shutdown<F>(mut self, f: F) -> Self
     where
-        F: FnMut() -> Pin<Box<dyn Future<Output = lifesavor_agent::error::Result<()>> + Send>>
+        F: FnMut() -> Pin<Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>>
             + Send
             + Sync
             + 'static,
@@ -174,7 +174,7 @@ impl SystemComponent for ClosureComponent {
         self.component_type
     }
 
-    async fn initialize(&mut self) -> lifesavor_agent::error::Result<()> {
+    async fn initialize(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         (self.initialize_fn)().await
     }
 
@@ -182,7 +182,7 @@ impl SystemComponent for ClosureComponent {
         (self.health_fn)().await
     }
 
-    async fn shutdown(&mut self) -> lifesavor_agent::error::Result<()> {
+    async fn shutdown(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         (self.shutdown_fn)().await
     }
 }

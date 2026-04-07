@@ -3,8 +3,7 @@
 //! Provides [`SystemSdkError`] for domain-specific error handling within system
 //! component implementations, plus a convenience [`Result`] type alias.
 
-use crate::{ErrorContext, Subsystem};
-use lifesavor_agent::registry::manifest::ManifestValidationError;
+use crate::{ErrorContext, ManifestValidationError, Subsystem};
 
 /// Domain-specific error type for the System SDK.
 ///

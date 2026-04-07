@@ -8,16 +8,16 @@
 //! # Architecture
 //!
 //! This crate is a **thin re-export layer** over the
-//! [`lifesavor-agent`](../lifesavor_agent/index.html) crate. It does not
-//! duplicate agent internals; instead it depends on the agent as a library and
-//! re-exports the public surface needed by system component developers. This
-//! guarantees type identity — a [`ProviderManifest`] from this SDK is the
-//! exact same Rust type as one from any other Life Savor SDK.
+//! [`lifesavor-agent-types`](../lifesavor_agent_types/index.html) crate. It
+//! depends on the shared types crate and re-exports the public surface needed
+//! by system component developers. This guarantees type identity — a
+//! [`ProviderManifest`] from this SDK is the exact same Rust type as one from
+//! any other Life Savor SDK.
 //!
 //! # Target Trait
 //!
-//! The primary trait is [`SystemComponent`], defined in the agent's
-//! `system_components` module. Implementations provide `initialize`,
+//! The primary trait is [`SystemComponent`], defined in the agent-types
+//! `system_component` module. Implementations provide `initialize`,
 //! `health_check`, and `shutdown` lifecycle hooks plus a component name and
 //! [`SystemComponentType`].
 //!
@@ -60,6 +60,7 @@
 
 pub mod prelude;
 pub mod builder;
+pub mod bridge_validation;
 pub mod health;
 pub mod error;
 pub mod testing;
@@ -74,13 +75,12 @@ pub mod analytics;
 // Re-exports: System Component types (Req 2.1)
 // ---------------------------------------------------------------------------
 
-/// Core system component trait and types from the agent crate.
-pub use lifesavor_agent::system_components::{
+/// Core system component trait and types from the agent-types crate.
+pub use lifesavor_agent_types::system_component::{
     SystemComponent,
     SystemComponentType,
     ComponentHealthStatus,
     SystemComponentInfo,
-    SystemComponentRegistry,
 };
 
 // ---------------------------------------------------------------------------
@@ -88,25 +88,21 @@ pub use lifesavor_agent::system_components::{
 // ---------------------------------------------------------------------------
 
 /// Bridge protocol types for sandboxed provider ↔ system component communication.
-pub use lifesavor_agent::system_components::{
-    SystemComponentBridge,
+pub use lifesavor_agent_types::bridge::{
     BridgeRequest,
     BridgeResponse,
+    BridgeError,
     SystemCallRequest,
     SystemCallResponse,
     BridgeRateLimit,
-    BridgeRateLimiter,
 };
-
-/// Structured error returned by the bridge.
-pub use lifesavor_agent::system_components::bridge::BridgeError;
 
 // ---------------------------------------------------------------------------
 // Re-exports: Streaming envelope (Req 2.4)
 // ---------------------------------------------------------------------------
 
 /// Unified streaming envelope for WebSocket message framing.
-pub use lifesavor_agent::streaming::{
+pub use lifesavor_agent_types::streaming::{
     StreamingEnvelope,
     StreamStatus,
     StreamMetadata,
@@ -117,7 +113,7 @@ pub use lifesavor_agent::streaming::{
 // ---------------------------------------------------------------------------
 
 /// Structured error chain types for cross-subsystem error reporting.
-pub use lifesavor_agent::error::{
+pub use lifesavor_agent_types::error_chain::{
     ErrorChain,
     ErrorContext,
     Subsystem,
@@ -128,7 +124,7 @@ pub use lifesavor_agent::error::{
 // ---------------------------------------------------------------------------
 
 /// Provider manifest and validation types.
-pub use lifesavor_agent::registry::manifest::{
+pub use lifesavor_agent_types::manifest::{
     ProviderManifest,
     ProviderType,
     ConnectionConfig,
@@ -150,9 +146,8 @@ pub use lifesavor_agent::registry::manifest::{
 // Re-exports: Sandbox / Process types (Req 10.1)
 // ---------------------------------------------------------------------------
 
-/// Process sandbox types for child-process isolation.
-pub use lifesavor_agent::process::{
-    ProcessSandbox,
+/// Sandbox violation types for child-process isolation.
+pub use lifesavor_agent_types::sandbox::{
     SandboxViolation,
     SandboxViolationType,
 };
@@ -162,8 +157,8 @@ pub use lifesavor_agent::process::{
 // ---------------------------------------------------------------------------
 
 /// Credential resolution types.
-pub use lifesavor_agent::providers::credential_manager::{
-    CredentialManager,
+pub use lifesavor_agent_types::credential::{
+    CredentialResolver,
     ResolvedCredential,
     CredentialError,
 };

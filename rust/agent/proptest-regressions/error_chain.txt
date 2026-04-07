@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 5b12f8f6457a1fa88ab331b1c26c5c135a355c8784d4c9d412e3d0fd14920394 # shrinks to ctx = ErrorContext { subsystem: Router, code: "ჼ", message: "𐏑", locale_key: None, metadata: Some(Null), children: [] }
+cc 0864fe047d476e0a8da12987a11cb2e4c783d4305c1d7e1ccbd94b22c62022ed # shrinks to chain = ErrorChain { correlation_id: "\u{11d90}", timestamp: 2020-01-01T00:00:00Z, contexts: [ErrorContext { subsystem: Router, code: "ଏ", message: "A", locale_key: None, metadata: Some(Null), children: [] }] }

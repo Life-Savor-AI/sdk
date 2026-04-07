@@ -120,7 +120,7 @@ impl ComponentManifestBuilder {
     pub fn to_toml(&self) -> crate::error::Result<String> {
         let name = self.name.as_deref().ok_or_else(|| {
             crate::error::SystemSdkError::ManifestValidation(
-                lifesavor_agent::registry::manifest::ManifestValidationError {
+                crate::ManifestValidationError {
                     file_path: "component-manifest.toml".to_string(),
                     field_name: "name".to_string(),
                     description: "component name is required".to_string(),
@@ -130,7 +130,7 @@ impl ComponentManifestBuilder {
 
         let version = self.version.as_deref().ok_or_else(|| {
             crate::error::SystemSdkError::ManifestValidation(
-                lifesavor_agent::registry::manifest::ManifestValidationError {
+                crate::ManifestValidationError {
                     file_path: "component-manifest.toml".to_string(),
                     field_name: "version".to_string(),
                     description: "component version is required".to_string(),
@@ -140,7 +140,7 @@ impl ComponentManifestBuilder {
 
         if !is_valid_semver(version) {
             return Err(crate::error::SystemSdkError::ManifestValidation(
-                lifesavor_agent::registry::manifest::ManifestValidationError {
+                crate::ManifestValidationError {
                     file_path: "component-manifest.toml".to_string(),
                     field_name: "version".to_string(),
                     description: format!("'{}' is not a valid semver version", version),
@@ -150,7 +150,7 @@ impl ComponentManifestBuilder {
 
         if self.component_type != "system_component" {
             return Err(crate::error::SystemSdkError::ManifestValidation(
-                lifesavor_agent::registry::manifest::ManifestValidationError {
+                crate::ManifestValidationError {
                     file_path: "component-manifest.toml".to_string(),
                     field_name: "type".to_string(),
                     description: format!(

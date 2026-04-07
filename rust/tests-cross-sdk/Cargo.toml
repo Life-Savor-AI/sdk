@@ -5,6 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
+lifesavor-agent-types = { path = "../agent" }
 lifesavor-system-sdk = { path = "../system" }
 lifesavor-model-sdk = { path = "../model" }
 lifesavor-assistant-sdk = { path = "../assistant" }

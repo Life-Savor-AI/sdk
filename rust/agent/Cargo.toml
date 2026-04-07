@@ -1,0 +1,24 @@
+[package]
+name = "lifesavor-agent-types"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT"
+description = "Shared interface types for the Life Savor agent and SDK ecosystem"
+repository = "https://github.com/lifesavor/lifesavor-agent"
+homepage = "https://developer.lifesavor.ai"
+keywords = ["lifesavor", "agent", "types", "sdk", "interface"]
+categories = ["development-tools", "api-bindings"]
+
+[dependencies]
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+toml = "0.8"
+uuid = { version = "1.7", features = ["v4", "serde"] }
+
+[dev-dependencies]
+proptest = "1.4"
+tokio = { version = "1.36", features = ["rt", "macros"] }
