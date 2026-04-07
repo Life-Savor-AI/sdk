@@ -9,7 +9,7 @@ lifesavor-system-sdk = { path = "../system" }
 lifesavor-model-sdk = { path = "../model" }
 lifesavor-assistant-sdk = { path = "../assistant" }
 lifesavor-skill-sdk = { path = "../skill" }
-lifesavor-agent = { path = "../../agent-source-cross-platform" }
+lifesavor-agent = { path = "../../../../agents/cross-platform/source" }
 proptest = "1.4"
 tokio = { version = "1.36", features = ["full"] }
 serde_json = "1.0"

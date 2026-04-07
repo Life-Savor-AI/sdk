@@ -1,3 +1,6 @@
 [workspace]
-members = ["system", "model", "assistant", "skill", "tests-cross-sdk"]
+members = ["model", "assistant", "skill", "tests-cross-sdk"]
+# "system" is excluded — it's internal-only for Life Savor AI org members.
+# For local development, use: cargo build -p lifesavor-system-sdk --manifest-path system/Cargo.toml
+exclude = ["system"]
 resolver = "2"
