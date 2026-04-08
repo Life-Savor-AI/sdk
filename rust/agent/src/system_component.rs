@@ -33,6 +33,7 @@ pub enum SystemComponentType {
     UserNotifications,
     Llm,
     VectorStore,
+    EventStore,
 }
 
 impl fmt::Display for SystemComponentType {
@@ -50,6 +51,7 @@ impl fmt::Display for SystemComponentType {
             Self::UserNotifications => write!(f, "user_notifications"),
             Self::Llm => write!(f, "llm"),
             Self::VectorStore => write!(f, "vector_store"),
+            Self::EventStore => write!(f, "event_store"),
         }
     }
 }
@@ -104,6 +106,24 @@ pub trait SystemComponent: Send + Sync {
 
     /// Gracefully shut down the component.
     async fn shutdown(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+
+    /// JSON Schema describing configurable fields. None = not configurable.
+    fn config_schema(&self) -> Option<serde_json::Value> {
+        None
+    }
+
+    /// Current config as JSON with sensitive fields redacted. None = not configurable.
+    fn current_config(&self) -> Option<serde_json::Value> {
+        None
+    }
+
+    /// Validate and apply new configuration. Default: not supported.
+    async fn apply_config(
+        &mut self,
+        _config: serde_json::Value,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        Err("Configuration not supported by this component".into())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -125,6 +145,24 @@ pub struct SystemComponentInfo {
     pub registered_at: DateTime<Utc>,
     /// Capabilities advertised by the component (free-form tags).
     pub capabilities: Vec<String>,
+}
+
+// ---------------------------------------------------------------------------
+// ConfigurableComponentInfo
+// ---------------------------------------------------------------------------
+
+/// Describes a registered component that supports runtime configuration.
+///
+/// Returned by `SystemComponentRegistry::configurable_components()` for each
+/// component whose `config_schema()` returns `Some(...)`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfigurableComponentInfo {
+    /// Component name (matches `SystemComponent::component_name()`).
+    pub name: String,
+    /// Component type.
+    pub component_type: SystemComponentType,
+    /// JSON Schema describing the component's configurable fields.
+    pub schema: serde_json::Value,
 }
 
 // ---------------------------------------------------------------------------
@@ -161,6 +199,7 @@ mod tests {
         assert_eq!(SystemComponentType::UserNotifications.to_string(), "user_notifications");
         assert_eq!(SystemComponentType::Llm.to_string(), "llm");
         assert_eq!(SystemComponentType::VectorStore.to_string(), "vector_store");
+        assert_eq!(SystemComponentType::EventStore.to_string(), "event_store");
     }
 
     #[test]
@@ -212,6 +251,57 @@ mod tests {
         assert_eq!(back.capabilities, info.capabilities);
     }
 
+    // -- Default config method tests --------------------------------------
+
+    /// Minimal `SystemComponent` impl that relies on default config methods.
+    struct BareComponent;
+
+    #[async_trait]
+    impl SystemComponent for BareComponent {
+        fn component_name(&self) -> &str {
+            "bare"
+        }
+        fn component_type(&self) -> SystemComponentType {
+            SystemComponentType::Cache
+        }
+        async fn initialize(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+            Ok(())
+        }
+        async fn health_check(&self) -> ComponentHealthStatus {
+            ComponentHealthStatus::Healthy
+        }
+        async fn shutdown(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+            Ok(())
+        }
+    }
+
+    /// **Validates: Requirements 1.1, 1.2**
+    #[test]
+    fn default_config_schema_returns_none() {
+        let comp = BareComponent;
+        assert!(comp.config_schema().is_none());
+    }
+
+    /// **Validates: Requirements 1.1, 1.2**
+    #[test]
+    fn default_current_config_returns_none() {
+        let comp = BareComponent;
+        assert!(comp.current_config().is_none());
+    }
+
+    /// **Validates: Requirements 1.1, 1.2**
+    #[tokio::test]
+    async fn default_apply_config_returns_error() {
+        let mut comp = BareComponent;
+        let result = comp.apply_config(serde_json::json!({"key": "value"})).await;
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("not supported"),
+            "Expected error about config not supported, got: {err_msg}"
+        );
+    }
+
     // -- Proptest strategies ----------------------------------------------
 
     fn arb_system_component_type() -> impl Strategy<Value = SystemComponentType> {
@@ -228,6 +318,7 @@ mod tests {
             Just(SystemComponentType::UserNotifications),
             Just(SystemComponentType::Llm),
             Just(SystemComponentType::VectorStore),
+            Just(SystemComponentType::EventStore),
         ]
     }
 
