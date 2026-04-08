@@ -45,6 +45,20 @@ type HealthCheckFn = Box<
     dyn Fn() -> Pin<Box<dyn Future<Output = ComponentHealthStatus> + Send>> + Send + Sync,
 >;
 
+/// Closure type for `config_schema` — `Fn` returning an optional JSON schema.
+type ConfigSchemaFn = Box<dyn Fn() -> Option<serde_json::Value> + Send + Sync>;
+
+/// Closure type for `current_config` — `Fn` returning the current config as JSON.
+type CurrentConfigFn = Box<dyn Fn() -> Option<serde_json::Value> + Send + Sync>;
+
+/// Closure type for `apply_config` — `FnMut` returning a pinned future that
+/// resolves to `Result<(), Box<dyn Error>>`.
+type ApplyConfigFn = Box<
+    dyn FnMut(serde_json::Value) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>>
+        + Send
+        + Sync,
+>;
+
 // ---------------------------------------------------------------------------
 // SystemComponentBuilder
 // ---------------------------------------------------------------------------
@@ -61,6 +75,9 @@ pub struct SystemComponentBuilder {
     initialize_fn: Option<InitShutdownFn>,
     health_fn: Option<HealthCheckFn>,
     shutdown_fn: Option<InitShutdownFn>,
+    config_schema_fn: Option<ConfigSchemaFn>,
+    current_config_fn: Option<CurrentConfigFn>,
+    apply_config_fn: Option<ApplyConfigFn>,
 }
 
 impl SystemComponentBuilder {
@@ -72,6 +89,9 @@ impl SystemComponentBuilder {
             initialize_fn: None,
             health_fn: None,
             shutdown_fn: None,
+            config_schema_fn: None,
+            current_config_fn: None,
+            apply_config_fn: None,
         }
     }
 
@@ -120,6 +140,45 @@ impl SystemComponentBuilder {
         self
     }
 
+    /// Set the config-schema closure (optional).
+    ///
+    /// When provided, the built component's `config_schema()` delegates to
+    /// this closure. When omitted, the trait default (`None`) is used.
+    pub fn on_config_schema<F>(mut self, f: F) -> Self
+    where
+        F: Fn() -> Option<serde_json::Value> + Send + Sync + 'static,
+    {
+        self.config_schema_fn = Some(Box::new(f));
+        self
+    }
+
+    /// Set the current-config closure (optional).
+    ///
+    /// When provided, the built component's `current_config()` delegates to
+    /// this closure. When omitted, the trait default (`None`) is used.
+    pub fn on_current_config<F>(mut self, f: F) -> Self
+    where
+        F: Fn() -> Option<serde_json::Value> + Send + Sync + 'static,
+    {
+        self.current_config_fn = Some(Box::new(f));
+        self
+    }
+
+    /// Set the apply-config closure (optional).
+    ///
+    /// When provided, the built component's `apply_config()` delegates to
+    /// this closure. When omitted, the trait default (returns `Err`) is used.
+    pub fn on_apply_config<F>(mut self, f: F) -> Self
+    where
+        F: FnMut(serde_json::Value) -> Pin<Box<dyn Future<Output = Result<(), Box<dyn std::error::Error + Send + Sync>>> + Send>>
+            + Send
+            + Sync
+            + 'static,
+    {
+        self.apply_config_fn = Some(Box::new(f));
+        self
+    }
+
     /// Consume the builder and produce a boxed [`SystemComponent`].
     ///
     /// Returns an error if the component name is empty or any closure is
@@ -146,6 +205,9 @@ impl SystemComponentBuilder {
             initialize_fn,
             health_fn,
             shutdown_fn,
+            config_schema_fn: self.config_schema_fn,
+            current_config_fn: self.current_config_fn,
+            apply_config_fn: self.apply_config_fn,
         }))
     }
 }
@@ -162,6 +224,9 @@ struct ClosureComponent {
     initialize_fn: InitShutdownFn,
     health_fn: HealthCheckFn,
     shutdown_fn: InitShutdownFn,
+    config_schema_fn: Option<ConfigSchemaFn>,
+    current_config_fn: Option<CurrentConfigFn>,
+    apply_config_fn: Option<ApplyConfigFn>,
 }
 
 #[async_trait]
@@ -184,6 +249,30 @@ impl SystemComponent for ClosureComponent {
 
     async fn shutdown(&mut self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         (self.shutdown_fn)().await
+    }
+
+    fn config_schema(&self) -> Option<serde_json::Value> {
+        match &self.config_schema_fn {
+            Some(f) => f(),
+            None => None, // trait default
+        }
+    }
+
+    fn current_config(&self) -> Option<serde_json::Value> {
+        match &self.current_config_fn {
+            Some(f) => f(),
+            None => None, // trait default
+        }
+    }
+
+    async fn apply_config(
+        &mut self,
+        config: serde_json::Value,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        match &mut self.apply_config_fn {
+            Some(f) => f(config).await,
+            None => Err("Configuration not supported by this component".into()),
+        }
     }
 }
 
@@ -287,5 +376,90 @@ mod tests {
                 .build(),
         );
         assert!(err.to_string().contains("shutdown"));
+    }
+
+    #[tokio::test]
+    async fn config_defaults_when_no_closures() {
+        let mut component =
+            SystemComponentBuilder::new("no-config", SystemComponentType::Cache)
+                .on_initialize(|| Box::pin(async { Ok(()) }))
+                .on_health_check(|| Box::pin(async { ComponentHealthStatus::Healthy }))
+                .on_shutdown(|| Box::pin(async { Ok(()) }))
+                .build()
+                .unwrap();
+
+        assert!(component.config_schema().is_none());
+        assert!(component.current_config().is_none());
+        let result = component.apply_config(serde_json::json!({"key": "val"})).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("not supported"));
+    }
+
+    #[tokio::test]
+    async fn config_closures_are_called() {
+        let schema = serde_json::json!({"type": "object"});
+        let config = serde_json::json!({"enabled": true});
+        let schema_clone = schema.clone();
+        let config_clone = config.clone();
+
+        let mut component =
+            SystemComponentBuilder::new("configurable", SystemComponentType::Cache)
+                .on_initialize(|| Box::pin(async { Ok(()) }))
+                .on_health_check(|| Box::pin(async { ComponentHealthStatus::Healthy }))
+                .on_shutdown(|| Box::pin(async { Ok(()) }))
+                .on_config_schema(move || Some(schema_clone.clone()))
+                .on_current_config(move || Some(config_clone.clone()))
+                .on_apply_config(|_cfg| Box::pin(async { Ok(()) }))
+                .build()
+                .unwrap();
+
+        assert_eq!(component.config_schema(), Some(schema));
+        assert_eq!(component.current_config(), Some(config));
+        assert!(component.apply_config(serde_json::json!({"new": "val"})).await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn apply_config_closure_receives_value() {
+        use std::sync::{Arc, Mutex};
+
+        let received = Arc::new(Mutex::new(None));
+        let received_clone = received.clone();
+
+        let mut component =
+            SystemComponentBuilder::new("apply-test", SystemComponentType::Cache)
+                .on_initialize(|| Box::pin(async { Ok(()) }))
+                .on_health_check(|| Box::pin(async { ComponentHealthStatus::Healthy }))
+                .on_shutdown(|| Box::pin(async { Ok(()) }))
+                .on_apply_config(move |cfg| {
+                    let r = received_clone.clone();
+                    Box::pin(async move {
+                        *r.lock().unwrap() = Some(cfg);
+                        Ok(())
+                    })
+                })
+                .build()
+                .unwrap();
+
+        let input = serde_json::json!({"timeout": 30});
+        component.apply_config(input.clone()).await.unwrap();
+        assert_eq!(*received.lock().unwrap(), Some(input));
+    }
+
+    #[tokio::test]
+    async fn apply_config_closure_can_return_error() {
+        let mut component =
+            SystemComponentBuilder::new("err-test", SystemComponentType::Cache)
+                .on_initialize(|| Box::pin(async { Ok(()) }))
+                .on_health_check(|| Box::pin(async { ComponentHealthStatus::Healthy }))
+                .on_shutdown(|| Box::pin(async { Ok(()) }))
+                .on_apply_config(|_cfg| Box::pin(async {
+                    Err("VALIDATION_FAILED: bad value".into())
+                }))
+                .build()
+                .unwrap();
+
+        let result = component.apply_config(serde_json::json!({})).await;
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("VALIDATION_FAILED"));
     }
 }
