@@ -127,3 +127,23 @@ lifesavor-dev test --manifest manifest.toml
 - See [examples/](../examples/) for complete working examples
 - Read the [Deployment Guide](DEPLOYMENT.md) for production deployment details
 - Check [COMPATIBILITY.md](../COMPATIBILITY.md) for version compatibility
+
+## What's Next
+
+Once you have a basic component running, use the [Component Checklist](COMPONENT_CHECKLIST.md) to bring it to production quality. The checklist covers every required artifact:
+
+- **MCP tool definitions** — expose bridge operations to the agent's tool registry
+- **Runtime configuration** — JSON Schema-based `config_schema` / `current_config` / `apply_config`
+- **Real health checks** — probe the actual provider with graceful degradation
+- **Structured logging** — `tracing` fields with credential masking
+- **Rate limiting** — token bucket limiter for outbound API calls
+- **Usage events** — structured billing events for every billable operation
+- **Marketplace and permissions metadata** — `marketplace.toml` and `permissions.toml`
+- **Property-based tests** — `proptest` for MCP serde round-trips, config round-trips, and more
+
+You can also use the [scaffold template](../templates/component/) to generate a new component with all required files pre-populated:
+
+```bash
+cd developer/sdk/rust/system/templates/component
+./generate.sh --name my-component --type Cache
+```

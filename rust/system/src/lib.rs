@@ -67,6 +67,11 @@ pub mod testing;
 pub mod security_surface;
 pub mod build_config;
 pub mod component_manifest;
+pub mod file_client;
+pub mod resolver;
+pub mod mcp;
+pub mod standard_bridge_ops;
+pub mod logging;
 
 #[cfg(feature = "analytics")]
 pub mod analytics;
