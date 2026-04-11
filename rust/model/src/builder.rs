@@ -212,7 +212,7 @@ mod tests {
     #[test]
     fn new_rejects_vector_store_provider_type() {
         let mut manifest = valid_llm_manifest();
-        manifest.provider_type = ProviderType::VectorStore;
+        manifest.provider_type = ProviderType::MemoryStore;
         let err = ModelProviderBuilder::new(manifest).unwrap_err();
         assert!(err.to_string().contains("provider_type"));
     }

@@ -12,8 +12,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SDK_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Crates in dependency order (no inter-dependencies, but consistent ordering)
+# Crates in dependency order:
+# 1. agent-types must be published first (no lifesavor deps)
+# 2. SDK crates depend on agent-types but not on each other
 CRATES=(
+  "agent"
   "system"
   "model"
   "assistant"

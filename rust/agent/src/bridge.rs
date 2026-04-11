@@ -8,8 +8,12 @@
 
 use std::time::Duration;
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use crate::error_chain::ErrorChain;
+use crate::system_component::ComponentHealthStatus;
 
 // ---------------------------------------------------------------------------
 // BridgeRequest
@@ -50,6 +54,10 @@ pub struct BridgeResponse {
     /// Error details when `success` is false.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<BridgeError>,
+    /// Full error chain with subsystem, code, message, and correlation_id
+    /// when `success` is false (Req 11.7).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_chain: Option<ErrorChain>,
 }
 
 impl BridgeResponse {
@@ -59,6 +67,7 @@ impl BridgeResponse {
             success: true,
             result,
             error: None,
+            error_chain: None,
         }
     }
 
@@ -71,6 +80,24 @@ impl BridgeResponse {
                 code: code.into(),
                 message: message.into(),
             }),
+            error_chain: None,
+        }
+    }
+
+    /// Create an error response with a full error chain (Req 11.7).
+    pub fn err_with_chain(
+        code: impl Into<String>,
+        message: impl Into<String>,
+        chain: ErrorChain,
+    ) -> Self {
+        Self {
+            success: false,
+            result: Value::Null,
+            error: Some(BridgeError {
+                code: code.into(),
+                message: message.into(),
+            }),
+            error_chain: Some(chain),
         }
     }
 }
@@ -125,6 +152,9 @@ pub struct SystemCallResponse {
     /// Error details when `success` is false.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<BridgeError>,
+    /// Full error chain when `success` is false (Req 11.7).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_chain: Option<ErrorChain>,
 }
 
 impl From<BridgeResponse> for SystemCallResponse {
@@ -134,6 +164,7 @@ impl From<BridgeResponse> for SystemCallResponse {
             success: resp.success,
             result: resp.result,
             error: resp.error,
+            error_chain: resp.error_chain,
         }
     }
 }
@@ -177,6 +208,30 @@ mod duration_secs {
 }
 
 // ---------------------------------------------------------------------------
+// HealthCheckDiagnostics
+// ---------------------------------------------------------------------------
+
+/// Diagnostic details included in health check failure responses (Req 11.9).
+///
+/// When a component health check fails, this struct provides additional
+/// context to help developers diagnose the issue.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HealthCheckDiagnostics {
+    /// Current health status of the component.
+    pub status: ComponentHealthStatus,
+    /// Method used for the health check (e.g. `"json_rpc"`, `"trait_call"`).
+    pub check_method: String,
+    /// Timeout applied to the health check, in milliseconds.
+    pub timeout_ms: u64,
+    /// Timestamp of the last successful health check, if any.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_successful_check: Option<DateTime<Utc>>,
+    /// Suggested remediation action for the developer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub suggested_remediation: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
@@ -184,6 +239,7 @@ mod duration_secs {
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use crate::error_chain::{ErrorContext, Subsystem};
 
     // -- Unit tests -------------------------------------------------------
 
@@ -192,6 +248,7 @@ mod tests {
         let resp = BridgeResponse::ok(serde_json::json!({"key": "value"}));
         assert!(resp.success);
         assert!(resp.error.is_none());
+        assert!(resp.error_chain.is_none());
         assert_eq!(resp.result, serde_json::json!({"key": "value"}));
     }
 
@@ -200,9 +257,27 @@ mod tests {
         let resp = BridgeResponse::err("ERR_CODE", "something failed");
         assert!(!resp.success);
         assert_eq!(resp.result, Value::Null);
+        assert!(resp.error_chain.is_none());
         let err = resp.error.unwrap();
         assert_eq!(err.code, "ERR_CODE");
         assert_eq!(err.message, "something failed");
+    }
+
+    #[test]
+    fn bridge_response_err_with_chain() {
+        let mut chain = crate::error_chain::ErrorChain::new("corr-42".to_string());
+        chain.push(ErrorContext::new(
+            Subsystem::Bridge,
+            "COMPONENT_TIMEOUT",
+            "component did not respond",
+        ));
+        let resp = BridgeResponse::err_with_chain("COMPONENT_TIMEOUT", "timed out", chain.clone());
+        assert!(!resp.success);
+        assert!(resp.error.is_some());
+        let ec = resp.error_chain.unwrap();
+        assert_eq!(ec.correlation_id, "corr-42");
+        assert_eq!(ec.contexts.len(), 1);
+        assert_eq!(ec.contexts[0].code, "COMPONENT_TIMEOUT");
     }
 
     #[test]
@@ -213,6 +288,18 @@ mod tests {
         assert!(scr.success);
         assert_eq!(scr.result, serde_json::json!(42));
         assert!(scr.error.is_none());
+        assert!(scr.error_chain.is_none());
+    }
+
+    #[test]
+    fn system_call_response_preserves_error_chain() {
+        let mut chain = crate::error_chain::ErrorChain::new("corr-99".to_string());
+        chain.push(ErrorContext::new(Subsystem::Bridge, "ERR", "msg"));
+        let bridge = BridgeResponse::err_with_chain("ERR", "msg", chain);
+        let scr: SystemCallResponse = bridge.into();
+        assert!(!scr.success);
+        assert!(scr.error_chain.is_some());
+        assert_eq!(scr.error_chain.unwrap().correlation_id, "corr-99");
     }
 
     #[test]
@@ -241,6 +328,39 @@ mod tests {
         let resp = BridgeResponse::ok(Value::Null);
         let json = serde_json::to_string(&resp).unwrap();
         assert!(!json.contains("error"));
+        assert!(!json.contains("error_chain"));
+    }
+
+    #[test]
+    fn health_check_diagnostics_serde_round_trip() {
+        let diag = HealthCheckDiagnostics {
+            status: ComponentHealthStatus::Unhealthy {
+                details: "timeout".to_string(),
+            },
+            check_method: "json_rpc".to_string(),
+            timeout_ms: 5000,
+            last_successful_check: Some(Utc::now()),
+            suggested_remediation: Some("Restart the component".to_string()),
+        };
+        let json = serde_json::to_string(&diag).unwrap();
+        let back: HealthCheckDiagnostics = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.check_method, "json_rpc");
+        assert_eq!(back.timeout_ms, 5000);
+        assert!(back.suggested_remediation.is_some());
+    }
+
+    #[test]
+    fn health_check_diagnostics_skip_none_fields() {
+        let diag = HealthCheckDiagnostics {
+            status: ComponentHealthStatus::Healthy,
+            check_method: "trait_call".to_string(),
+            timeout_ms: 3000,
+            last_successful_check: None,
+            suggested_remediation: None,
+        };
+        let json = serde_json::to_string(&diag).unwrap();
+        assert!(!json.contains("last_successful_check"));
+        assert!(!json.contains("suggested_remediation"));
     }
 
     // -- Proptest strategies ----------------------------------------------
@@ -277,12 +397,47 @@ mod tests {
         ("\\w{1,20}", "\\w{0,50}").prop_map(|(code, message)| BridgeError { code, message })
     }
 
+    fn arb_subsystem() -> impl Strategy<Value = Subsystem> {
+        prop_oneof![
+            Just(Subsystem::Router),
+            Just(Subsystem::Provider),
+            Just(Subsystem::Bridge),
+            Just(Subsystem::Registry),
+        ]
+    }
+
+    fn arb_error_context_leaf() -> impl Strategy<Value = ErrorContext> {
+        (arb_subsystem(), "\\w{1,20}", "\\w{1,30}")
+            .prop_map(|(subsystem, code, message)| ErrorContext::new(subsystem, code, message))
+    }
+
+    fn arb_datetime_utc() -> impl Strategy<Value = DateTime<Utc>> {
+        (1577836800i64..1893456000i64)
+            .prop_map(|secs| DateTime::from_timestamp(secs, 0).unwrap())
+    }
+
+    fn arb_error_chain() -> impl Strategy<Value = crate::error_chain::ErrorChain> {
+        (
+            "\\w{1,30}",
+            arb_datetime_utc(),
+            proptest::collection::vec(arb_error_context_leaf(), 0..3),
+        )
+            .prop_map(|(correlation_id, timestamp, contexts)| {
+                crate::error_chain::ErrorChain {
+                    correlation_id,
+                    timestamp,
+                    contexts,
+                }
+            })
+    }
+
     fn arb_bridge_response() -> impl Strategy<Value = BridgeResponse> {
-        (any::<bool>(), arb_json_value(), proptest::option::of(arb_bridge_error())).prop_map(
-            |(success, result, error)| BridgeResponse {
+        (any::<bool>(), arb_json_value(), proptest::option::of(arb_bridge_error()), proptest::option::of(arb_error_chain())).prop_map(
+            |(success, result, error, error_chain)| BridgeResponse {
                 success,
                 result,
                 error,
+                error_chain,
             },
         )
     }
@@ -304,13 +459,15 @@ mod tests {
             any::<bool>(),
             arb_json_value(),
             proptest::option::of(arb_bridge_error()),
+            proptest::option::of(arb_error_chain()),
         )
-            .prop_map(|(operation_type, success, result, error)| {
+            .prop_map(|(operation_type, success, result, error, error_chain)| {
                 SystemCallResponse {
                     operation_type,
                     success,
                     result,
                     error,
+                    error_chain,
                 }
             })
     }

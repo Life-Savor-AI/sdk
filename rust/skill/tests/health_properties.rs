@@ -9,7 +9,10 @@
 use std::time::Duration;
 
 use lifesavor_skill_sdk::health::HealthCheckBuilder;
-use lifesavor_skill_sdk::{HealthCheckConfig, HealthCheckMethod, HealthStatus};
+use lifesavor_skill_sdk::{HealthCheckConfig, HealthCheckMethod};
+
+#[cfg(feature = "agent-runtime")]
+use lifesavor_skill_sdk::HealthStatus;
 use proptest::prelude::*;
 
 // ---------------------------------------------------------------------------
@@ -72,10 +75,11 @@ proptest! {
 // ---------------------------------------------------------------------------
 // Property 8: Health check timeout returns failure status rather than blocking
 // ---------------------------------------------------------------------------
+// NOTE: This test requires the `agent-runtime` feature because `check()` uses
+// tokio. When running without the feature, only the builder accessor property
+// test above is exercised.
 
-/// **Property 8: Health check timeout returns failure status rather than blocking**
-///
-/// **Validates: Requirements 7.3**
+#[cfg(feature = "agent-runtime")]
 #[test]
 fn health_check_timeout_returns_unhealthy_not_blocking() {
     let rt = tokio::runtime::Builder::new_current_thread()

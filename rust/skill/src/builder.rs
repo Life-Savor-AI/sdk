@@ -36,9 +36,8 @@ use crate::error::SkillSdkError;
 use crate::{
     HealthStatus, ManifestValidationError, ProviderManifest, ProviderType,
     SkillCapabilityDescriptor, SkillProviderError, SkillProvider, ToolSchema,
-    validate_manifest,
+    SkillExecutionResult, validate_manifest,
 };
-use lifesavor_agent::skills::SkillExecutionResult;
 
 // ---------------------------------------------------------------------------
 // ToolSchemaBuilder
@@ -415,7 +414,7 @@ mod tests {
     #[test]
     fn provider_builder_rejects_vector_store_provider_type() {
         let mut manifest = valid_skill_manifest();
-        manifest.provider_type = ProviderType::VectorStore;
+        manifest.provider_type = ProviderType::MemoryStore;
         let err = SkillProviderBuilder::new(manifest).unwrap_err();
         assert!(err.to_string().contains("provider_type"));
     }

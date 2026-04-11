@@ -80,6 +80,8 @@ Most shared types (SystemComponent, bridge, streaming, manifest, etc.) are avail
 - [`examples/cache_component/`](examples/cache_component/) — Cache component with get/set/delete operations
 - [`examples/bridge_consumer/`](examples/bridge_consumer/) — Sandboxed skill accessing system components via `SystemComponentBridge`
 - [`examples/sandbox_compliance/`](examples/sandbox_compliance/) — Sandbox constraint declaration and enforcement
+- [`examples/external_component/`](examples/external_component.rs) — External component connecting via JSON-RPC (auth, register, handle bridge requests)
+- [`examples/memory_store_component/`](examples/memory_store_component.rs) — MemoryStore with store/search/delete and `tool_schemas()`/`declaration()`
 
 ## Documentation
 
@@ -119,9 +121,14 @@ Use the [scaffold template](templates/component/) and its `generate.sh` script t
 
 This SDK is a thin re-export layer over the `lifesavor-agent-types` crate. Types like `ProviderManifest`, `ErrorChain`, and `StreamingEnvelope` are the identical Rust types used by the agent — no duplication, no drift. Component crates depend only on this SDK, not on the agent runtime.
 
+Components can be **compiled-in** (linked into the agent binary) or **external** (any language, connected via JSON-RPC 2.0). Both types implement the same `SystemComponent` interface and participate in the same bridge dispatch, health checks, and tool schema registry.
+
 ```
-your-component → lifesavor-system-sdk → lifesavor-agent-types
+Compiled-in:  your-component → lifesavor-system-sdk → lifesavor-agent-types
+External:     your-component → JSON-RPC → agent → ExternalComponentProxy → registry
 ```
+
+The agent supports **multi-instance** components — multiple instances of the same `SystemComponentType` can coexist, each with a unique instance ID (e.g., `memory_store:sqlite-vec-rag`, `memory_store:mempalace-personal`).
 
 See the [SDK architecture docs](../../docs/ARCHITECTURE.md) for the full dependency graph.
 

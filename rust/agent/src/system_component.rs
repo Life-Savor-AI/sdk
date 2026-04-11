@@ -10,6 +10,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
+use crate::component_declaration::{ComponentDeclaration, ToolSchema};
+
 // ---------------------------------------------------------------------------
 // SystemComponentType
 // ---------------------------------------------------------------------------
@@ -32,7 +34,7 @@ pub enum SystemComponentType {
     MediaProcessing,
     UserNotifications,
     Llm,
-    VectorStore,
+    MemoryStore,
     EventStore,
 }
 
@@ -50,7 +52,7 @@ impl fmt::Display for SystemComponentType {
             Self::MediaProcessing => write!(f, "media_processing"),
             Self::UserNotifications => write!(f, "user_notifications"),
             Self::Llm => write!(f, "llm"),
-            Self::VectorStore => write!(f, "vector_store"),
+            Self::MemoryStore => write!(f, "memory_store"),
             Self::EventStore => write!(f, "event_store"),
         }
     }
@@ -124,6 +126,16 @@ pub trait SystemComponent: Send + Sync {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         Err("Configuration not supported by this component".into())
     }
+
+    /// Return tool schemas for MCP discovery. Default: empty.
+    fn tool_schemas(&self) -> Vec<ToolSchema> {
+        vec![]
+    }
+
+    /// Return the component's declaration. Default: None.
+    fn declaration(&self) -> Option<ComponentDeclaration> {
+        None
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +149,9 @@ pub struct SystemComponentInfo {
     pub name: String,
     /// Component type.
     pub component_type: SystemComponentType,
+    /// Unique instance identifier for multi-instance support.
+    /// Defaults to the component name when not explicitly provided.
+    pub instance_id: String,
     /// Last observed health status.
     pub health: ComponentHealthStatus,
     /// When the last health check was performed.
@@ -145,6 +160,10 @@ pub struct SystemComponentInfo {
     pub registered_at: DateTime<Utc>,
     /// Capabilities advertised by the component (free-form tags).
     pub capabilities: Vec<String>,
+    /// Whether this component is an external (JSON-RPC) component.
+    pub is_external: bool,
+    /// The component's declaration, if provided at registration time.
+    pub declaration: Option<ComponentDeclaration>,
 }
 
 // ---------------------------------------------------------------------------
@@ -198,7 +217,7 @@ mod tests {
         assert_eq!(SystemComponentType::MediaProcessing.to_string(), "media_processing");
         assert_eq!(SystemComponentType::UserNotifications.to_string(), "user_notifications");
         assert_eq!(SystemComponentType::Llm.to_string(), "llm");
-        assert_eq!(SystemComponentType::VectorStore.to_string(), "vector_store");
+        assert_eq!(SystemComponentType::MemoryStore.to_string(), "memory_store");
         assert_eq!(SystemComponentType::EventStore.to_string(), "event_store");
     }
 
@@ -225,6 +244,18 @@ mod tests {
         assert_eq!(back, ct);
     }
 
+    /// Feature: agent-jsonrpc-component-interface, Property 1: SystemComponentType and ProviderType Serde Round-Trip
+    ///
+    /// **Validates: Requirements 1.2, 1.3**
+    #[test]
+    fn memory_store_component_type_serializes_to_memory_store() {
+        let ct = SystemComponentType::MemoryStore;
+        let json = serde_json::to_string(&ct).unwrap();
+        assert_eq!(json, "\"memory_store\"", "MemoryStore must serialize to \"memory_store\"");
+        let back: SystemComponentType = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, SystemComponentType::MemoryStore, "\"memory_store\" must deserialize to MemoryStore");
+    }
+
     #[test]
     fn health_status_serde_round_trip_unit() {
         let h = ComponentHealthStatus::Degraded { details: "slow".into() };
@@ -238,17 +269,22 @@ mod tests {
         let info = SystemComponentInfo {
             name: "tts".into(),
             component_type: SystemComponentType::Tts,
+            instance_id: "tts".into(),
             health: ComponentHealthStatus::Healthy,
             last_health_check: Some(Utc::now()),
             registered_at: Utc::now(),
             capabilities: vec!["speak".into()],
+            is_external: false,
+            declaration: None,
         };
         let json = serde_json::to_string(&info).unwrap();
         let back: SystemComponentInfo = serde_json::from_str(&json).unwrap();
         assert_eq!(back.name, info.name);
         assert_eq!(back.component_type, info.component_type);
+        assert_eq!(back.instance_id, info.instance_id);
         assert_eq!(back.health, info.health);
         assert_eq!(back.capabilities, info.capabilities);
+        assert_eq!(back.is_external, info.is_external);
     }
 
     // -- Default config method tests --------------------------------------
@@ -317,7 +353,7 @@ mod tests {
             Just(SystemComponentType::MediaProcessing),
             Just(SystemComponentType::UserNotifications),
             Just(SystemComponentType::Llm),
-            Just(SystemComponentType::VectorStore),
+            Just(SystemComponentType::MemoryStore),
             Just(SystemComponentType::EventStore),
         ]
     }
@@ -338,15 +374,20 @@ mod tests {
             arb_component_health_status(),
             any::<bool>(),
             proptest::collection::vec("\\w+", 0..5),
+            any::<bool>(),
         )
-            .prop_map(|(name, component_type, health, has_last_check, capabilities)| {
+            .prop_map(|(name, component_type, health, has_last_check, capabilities, is_external)| {
+                let instance_id = name.clone();
                 SystemComponentInfo {
                     name,
                     component_type,
+                    instance_id,
                     health,
                     last_health_check: if has_last_check { Some(Utc::now()) } else { None },
                     registered_at: Utc::now(),
                     capabilities,
+                    is_external,
+                    declaration: None,
                 }
             })
     }
@@ -354,11 +395,11 @@ mod tests {
     // -- Property tests ---------------------------------------------------
 
     proptest! {
-        /// Property 1: Serde JSON round-trip for system component types
+        /// Feature: agent-jsonrpc-component-interface, Property 1: SystemComponentType and ProviderType Serde Round-Trip
         ///
-        /// **Validates: Requirements 13.1**
+        /// **Validates: Requirements 1.2, 1.3**
         ///
-        /// For any valid `SystemComponentType`, serializing to JSON and
+        /// For any valid `SystemComponentType` (including `MemoryStore`), serializing to JSON and
         /// deserializing back produces the original value.
         #[test]
         fn serde_round_trip_system_component_type(ct in arb_system_component_type()) {
@@ -392,10 +433,12 @@ mod tests {
             let back: SystemComponentInfo = serde_json::from_str(&json).unwrap();
             prop_assert_eq!(&back.name, &info.name);
             prop_assert_eq!(back.component_type, info.component_type);
+            prop_assert_eq!(&back.instance_id, &info.instance_id);
             prop_assert_eq!(&back.health, &info.health);
             prop_assert_eq!(&back.capabilities, &info.capabilities);
             prop_assert_eq!(back.last_health_check, info.last_health_check);
             prop_assert_eq!(back.registered_at, info.registered_at);
+            prop_assert_eq!(back.is_external, info.is_external);
         }
     }
 }

@@ -15,15 +15,27 @@ readme = "README.md"
 default = []
 mcp = []
 analytics = []
+# Pull in the full agent crate for the sandbox-runner binary and
+# ProcessSandbox / EnforcementContext types.
+agent-runtime = ["dep:lifesavor-agent", "dep:tokio"]
 
 [dependencies]
-lifesavor-agent = { path = "../../../../agents/cross-platform/source" }
+# For crates.io publishing, replace path dependencies with version dependencies:
+#   lifesavor-agent-types = "0.1"
+#   lifesavor-agent = { version = "0.1", optional = true }
+# The lifesavor-agent dep is NOT published — the agent-runtime feature is
+# monorepo-only. When publishing to crates.io, remove the agent-runtime
+# feature and the lifesavor-agent dependency entirely.
+# See ../PUBLISHING.md for the full publishing workflow.
+lifesavor-agent-types = { path = "../agent" }
+# Optional: only needed by the sandbox-runner binary and runtime features.
+lifesavor-agent = { path = "../../../../agents/cross-platform/source", optional = true }
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
 tracing = "0.1"
-tokio = { version = "1.36", features = ["full"] }
+tokio = { version = "1.36", features = ["full"], optional = true }
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.7", features = ["v4", "serde"] }
 async-trait = "0.1"
@@ -31,7 +43,9 @@ async-trait = "0.1"
 [[bin]]
 name = "sandbox-runner"
 path = "src/bin/sandbox_runner.rs"
+required-features = ["agent-runtime"]
 
 [dev-dependencies]
 proptest = "1.4"
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
+tokio = { version = "1.36", features = ["rt-multi-thread", "macros", "time", "net"] }

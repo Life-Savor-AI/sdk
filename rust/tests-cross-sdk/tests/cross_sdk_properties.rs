@@ -144,7 +144,7 @@ fn error_context_and_subsystem_type_identity() {
 fn arb_provider_type() -> impl Strategy<Value = lifesavor_system_sdk::ProviderType> {
     prop::sample::select(vec![
         lifesavor_system_sdk::ProviderType::Llm,
-        lifesavor_system_sdk::ProviderType::VectorStore,
+        lifesavor_system_sdk::ProviderType::MemoryStore,
         lifesavor_system_sdk::ProviderType::Skill,
         lifesavor_system_sdk::ProviderType::Assistant,
     ])
@@ -170,7 +170,7 @@ fn arb_valid_manifest() -> impl Strategy<Value = lifesavor_system_sdk::ProviderM
                     args: None,
                     transport: None,
                 },
-                lifesavor_system_sdk::ProviderType::VectorStore => lifesavor_system_sdk::ConnectionConfig {
+                lifesavor_system_sdk::ProviderType::MemoryStore => lifesavor_system_sdk::ConnectionConfig {
                     base_url: None,
                     region: None,
                     database_url: Some("postgres://localhost/test".to_string()),

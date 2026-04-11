@@ -1445,6 +1445,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "lifesavor-agent",
+ "lifesavor-agent-types",
  "proptest",
  "serde",
  "serde_json",

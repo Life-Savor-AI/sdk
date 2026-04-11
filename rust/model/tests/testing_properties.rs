@@ -20,7 +20,7 @@ fn arb_provider_type() -> impl Strategy<Value = ProviderType> {
         Just(ProviderType::Llm),
         Just(ProviderType::Skill),
         Just(ProviderType::Assistant),
-        Just(ProviderType::VectorStore),
+        Just(ProviderType::MemoryStore),
     ]
 }
 
@@ -106,7 +106,7 @@ proptest! {
             registry.register(name, *pt);
         }
 
-        for pt in &[ProviderType::Llm, ProviderType::Skill, ProviderType::Assistant, ProviderType::VectorStore] {
+        for pt in &[ProviderType::Llm, ProviderType::Skill, ProviderType::Assistant, ProviderType::MemoryStore] {
             let expected_count = providers.iter().filter(|(_, t)| t == pt).count();
             let actual = registry.get_all_by_type(*pt);
             prop_assert_eq!(

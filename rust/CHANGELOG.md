@@ -5,6 +5,44 @@ Aggregated notable changes across all four SDK crates. For per-crate details, se
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - Unreleased
+
+### Added
+
+#### lifesavor-agent-types
+
+- `ComponentDeclaration` unified type shared across all SDK crates
+- `SystemComponent::tool_schemas()` and `SystemComponent::declaration()` optional trait methods
+- `ToolSchema` type for self-describing component operations
+
+### Changed
+
+#### lifesavor-agent-types
+
+- **BREAKING**: `SystemComponentType::VectorStore` renamed to `MemoryStore`
+- **BREAKING**: `ProviderType::VectorStore` renamed to `MemoryStore`
+
+#### lifesavor-system-sdk
+
+- **BREAKING**: `VectorStore` → `MemoryStore` rename in all re-exported types
+- **BREAKING**: Per-crate `ComponentDeclaration` replaced with unified type from `lifesavor-agent-types`
+- Dynamic bridge dispatch replaces hard-coded routing
+- `stubs.rs` deprecated in favor of registry-based dispatch
+- Multi-instance registry support
+- JSON-RPC external component support
+
+#### lifesavor-skill-sdk
+
+- **BREAKING**: `VectorStore` → `MemoryStore` rename in re-exported types
+- Now depends on `lifesavor-agent-types` instead of full agent crate (for default features)
+- No mandatory `tokio` dependency for synchronous skills
+
+### Publishing
+
+- `lifesavor-agent-types` added to `publish.sh` as first crate in dependency order
+- Path dependencies annotated with version dependency equivalents for crates.io publishing
+- See `PUBLISHING.md` for the full publishing workflow
+
 ## [0.2.0] - 2026-04-07
 
 ### Added

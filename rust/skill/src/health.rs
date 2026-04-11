@@ -6,12 +6,16 @@
 //! crate: [`HealthCheckMethod::HttpGet`], [`HealthCheckMethod::ConnectionPing`],
 //! and [`HealthCheckMethod::CapabilityProbe`].
 //!
-//! Health checks enforce the configured timeout — if the probe exceeds
-//! `timeout_seconds`, a failure status is returned rather than blocking.
+//! The async `check()` method requires the `tokio` runtime (enabled via the
+//! `agent-runtime` feature). Synchronous skills can still use the builder's
+//! accessor methods without pulling in tokio.
 
 use std::time::Duration;
 
-use crate::{HealthCheckConfig, HealthCheckMethod, HealthStatus};
+use crate::HealthCheckConfig;
+
+#[cfg(feature = "agent-runtime")]
+use crate::{HealthCheckMethod, HealthStatus};
 
 /// Builder that constructs a runnable health check from a [`HealthCheckConfig`].
 ///
@@ -29,7 +33,7 @@ use crate::{HealthCheckConfig, HealthCheckMethod, HealthStatus};
 /// };
 ///
 /// let checker = HealthCheckBuilder::new(config);
-/// let status = checker.check().await;
+/// let status = checker.check().await; // requires tokio runtime
 /// ```
 pub struct HealthCheckBuilder {
     config: HealthCheckConfig,
@@ -60,7 +64,11 @@ impl HealthCheckBuilder {
     pub fn config(&self) -> &HealthCheckConfig {
         &self.config
     }
+}
 
+// Async health check methods require tokio.
+#[cfg(feature = "agent-runtime")]
+impl HealthCheckBuilder {
     /// Execute the health check, enforcing the configured timeout.
     ///
     /// If the probe exceeds `timeout_seconds`, returns
@@ -104,22 +112,18 @@ impl HealthCheckBuilder {
     }
 
     /// Connection ping probe — a lightweight connectivity check.
-    ///
-    /// Default implementation returns Healthy. Provider developers should
-    /// wrap or extend this for real connectivity verification.
     async fn probe_connection_ping(&self) -> HealthStatus {
         HealthStatus::Healthy
     }
 
     /// Capability probe — verifies the provider can serve requests.
-    ///
-    /// Default implementation returns Healthy.
     async fn probe_capability(&self) -> HealthStatus {
         HealthStatus::Healthy
     }
 }
 
 /// Parse a URL string into a `host:port` address for TCP connection.
+#[cfg(feature = "agent-runtime")]
 fn parse_host_port(url: &str) -> Option<String> {
     let without_scheme = url
         .strip_prefix("https://")
@@ -140,6 +144,10 @@ fn parse_host_port(url: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::HealthCheckMethod;
+
+    #[cfg(feature = "agent-runtime")]
+    use crate::HealthStatus;
 
     fn default_config(method: HealthCheckMethod) -> HealthCheckConfig {
         HealthCheckConfig {
@@ -160,6 +168,7 @@ mod tests {
         assert_eq!(builder.config(), &config);
     }
 
+    #[cfg(feature = "agent-runtime")]
     #[tokio::test]
     async fn connection_ping_returns_healthy() {
         let builder = HealthCheckBuilder::new(default_config(HealthCheckMethod::ConnectionPing));
@@ -167,6 +176,7 @@ mod tests {
         assert_eq!(status, HealthStatus::Healthy);
     }
 
+    #[cfg(feature = "agent-runtime")]
     #[tokio::test]
     async fn capability_probe_returns_healthy() {
         let builder = HealthCheckBuilder::new(default_config(HealthCheckMethod::CapabilityProbe));
@@ -174,6 +184,7 @@ mod tests {
         assert_eq!(status, HealthStatus::Healthy);
     }
 
+    #[cfg(feature = "agent-runtime")]
     #[tokio::test]
     async fn timeout_returns_unhealthy() {
         let config = HealthCheckConfig {

@@ -16,7 +16,7 @@ use lifesavor_skill_sdk::builder::{SkillProviderBuilder, ToolSchemaBuilder};
 use lifesavor_skill_sdk::{
     ConnectionConfig, HealthCheckConfig, HealthCheckMethod, Locality,
 };
-use lifesavor_agent::skills::SkillExecutionResult;
+use lifesavor_skill_sdk::SkillExecutionResult;
 
 // ---------------------------------------------------------------------------
 // Minimal JSON stdin/stdout skill

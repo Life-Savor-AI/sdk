@@ -545,7 +545,7 @@ mod tests {
     #[test]
     fn provider_builder_rejects_vector_store_provider_type() {
         let mut manifest = valid_assistant_manifest();
-        manifest.provider_type = ProviderType::VectorStore;
+        manifest.provider_type = ProviderType::MemoryStore;
         let err = AssistantProviderBuilder::new(manifest).unwrap_err();
         assert!(err.to_string().contains("provider_type"));
     }

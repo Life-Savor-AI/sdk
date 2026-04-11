@@ -1,7 +1,7 @@
 //! Provider manifest types and parsing functions.
 //!
 //! This module defines the `ProviderManifest` and all supporting types used
-//! to describe pluggable providers (LLM, VectorStore, Skill, Assistant).
+//! to describe pluggable providers (LLM, MemoryStore, Skill, Assistant).
 //! It also provides `parse_manifest`, `parse_manifest_file`, and
 //! `validate_manifest` for loading and validating TOML manifests.
 
@@ -45,7 +45,7 @@ pub struct ProviderManifest {
 #[serde(rename_all = "snake_case")]
 pub enum ProviderType {
     Llm,
-    VectorStore,
+    MemoryStore,
     Skill,
     Assistant,
 }
@@ -54,7 +54,7 @@ impl fmt::Display for ProviderType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ProviderType::Llm => write!(f, "llm"),
-            ProviderType::VectorStore => write!(f, "vector_store"),
+            ProviderType::MemoryStore => write!(f, "memory_store"),
             ProviderType::Skill => write!(f, "skill"),
             ProviderType::Assistant => write!(f, "assistant"),
         }
@@ -303,13 +303,13 @@ fn validate_connection(
                 });
             }
         }
-        ProviderType::VectorStore => {
+        ProviderType::MemoryStore => {
             if conn.database_url.is_none() && conn.extension_path.is_none() {
                 errors.push(ManifestValidationError {
                     file_path: file_path.to_string(),
                     field_name: "connection.database_url".to_string(),
                     description:
-                        "VectorStore providers require either database_url or extension_path"
+                        "MemoryStore providers require either database_url or extension_path"
                             .to_string(),
                 });
             }
@@ -337,7 +337,7 @@ fn toml_parse_error(
     let err_msg = err.message().to_string();
     let description = if err_msg.contains("unknown variant") {
         format!(
-            "{} — valid provider types are: llm, vector_store, skill, assistant",
+            "{} — valid provider types are: llm, memory_store, skill, assistant",
             err_msg
         )
     } else {
@@ -393,10 +393,10 @@ mod tests {
         .to_string()
     }
 
-    /// Helper: minimal valid VectorStore manifest TOML.
-    fn valid_vector_store_toml() -> String {
+    /// Helper: minimal valid MemoryStore manifest TOML.
+    fn valid_memory_store_toml() -> String {
         r#"
-            provider_type = "vector_store"
+            provider_type = "memory_store"
             instance_name = "sqlite-vec-default"
             sdk_version = "0.5.0"
             priority = 5
@@ -471,9 +471,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_valid_vector_store_manifest() {
-        let manifest = parse_manifest(&valid_vector_store_toml(), "sqlite-vec.toml").unwrap();
-        assert_eq!(manifest.provider_type, ProviderType::VectorStore);
+    fn parse_valid_memory_store_manifest() {
+        let manifest = parse_manifest(&valid_memory_store_toml(), "sqlite-vec.toml").unwrap();
+        assert_eq!(manifest.provider_type, ProviderType::MemoryStore);
         assert_eq!(
             manifest.connection.extension_path.as_deref(),
             Some("/usr/lib/sqlite-vec.so")
@@ -547,9 +547,9 @@ mod tests {
     }
 
     #[test]
-    fn reject_vector_store_missing_db_and_ext() {
+    fn reject_memory_store_missing_db_and_ext() {
         let toml = r#"
-            provider_type = "vector_store"
+            provider_type = "memory_store"
             instance_name = "bad-vs"
             sdk_version = "0.5.0"
             priority = 1
@@ -627,11 +627,23 @@ mod tests {
     }
 
     #[test]
-    fn round_trip_vector_store_manifest() {
-        let original = parse_manifest(&valid_vector_store_toml(), "test.toml").unwrap();
+    fn round_trip_memory_store_manifest() {
+        let original = parse_manifest(&valid_memory_store_toml(), "test.toml").unwrap();
         let serialized = toml::to_string(&original).expect("serialize");
         let reparsed = parse_manifest(&serialized, "test.toml").unwrap();
         assert_eq!(original, reparsed);
+    }
+
+    /// Feature: agent-jsonrpc-component-interface, Property 1: SystemComponentType and ProviderType Serde Round-Trip
+    ///
+    /// **Validates: Requirements 17.2**
+    #[test]
+    fn memory_store_provider_type_serializes_to_memory_store() {
+        let pt = ProviderType::MemoryStore;
+        let json = serde_json::to_string(&pt).unwrap();
+        assert_eq!(json, "\"memory_store\"", "ProviderType::MemoryStore must serialize to \"memory_store\"");
+        let back: ProviderType = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, ProviderType::MemoryStore, "\"memory_store\" must deserialize to ProviderType::MemoryStore");
     }
 
     // -- Unit tests: optional fields --------------------------------------
@@ -709,9 +721,9 @@ mod tests {
     }
 
     #[test]
-    fn accept_vector_store_with_database_url() {
+    fn accept_memory_store_with_database_url() {
         let toml = r#"
-            provider_type = "vector_store"
+            provider_type = "memory_store"
             instance_name = "pgvector"
             sdk_version = "0.5.0"
             priority = 1
@@ -728,7 +740,7 @@ mod tests {
             method = "connection_ping"
         "#;
         let manifest = parse_manifest(toml, "pgvector.toml").unwrap();
-        assert_eq!(manifest.provider_type, ProviderType::VectorStore);
+        assert_eq!(manifest.provider_type, ProviderType::MemoryStore);
     }
 
     // -- Proptest strategies -----------------------------------------------
@@ -736,7 +748,7 @@ mod tests {
     fn arb_provider_type() -> impl Strategy<Value = ProviderType> {
         prop_oneof![
             Just(ProviderType::Llm),
-            Just(ProviderType::VectorStore),
+            Just(ProviderType::MemoryStore),
             Just(ProviderType::Skill),
             Just(ProviderType::Assistant),
         ]
@@ -775,7 +787,7 @@ mod tests {
                     })
                     .boxed()
             }
-            ProviderType::VectorStore => {
+            ProviderType::MemoryStore => {
                 prop_oneof![
                     "[a-z]{1,10}://[a-z]{1,10}".prop_map(|url| ConnectionConfig {
                         base_url: None,
@@ -967,13 +979,13 @@ mod tests {
     // -- Property tests ---------------------------------------------------
 
     proptest! {
-        /// Property 2: Manifest TOML parse round-trip
+        /// Feature: agent-jsonrpc-component-interface, Property 1: SystemComponentType and ProviderType Serde Round-Trip
         ///
-        /// **Validates: Requirements 6.3**
+        /// **Validates: Requirements 17.2**
         ///
-        /// For any valid `ProviderManifest` value, serializing it to TOML
-        /// and then calling `parse_manifest` on the resulting string produces
-        /// a `ProviderManifest` equivalent to the original.
+        /// For any valid `ProviderManifest` value (including MemoryStore provider type),
+        /// serializing it to TOML and then calling `parse_manifest` on the resulting
+        /// string produces a `ProviderManifest` equivalent to the original.
         #[test]
         fn toml_round_trip_manifest(manifest in arb_provider_manifest()) {
             let toml_str = toml::to_string(&manifest).expect("serialize to TOML");

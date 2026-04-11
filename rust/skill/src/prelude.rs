@@ -9,7 +9,7 @@ pub use crate::{
     ExecutionLifecycleEvent,
     SkillProviderError,
     HealthStatus,
-    EnforcementContext,
+    SkillExecutionResult,
 };
 
 // MCP transport (feature-gated)
@@ -44,14 +44,15 @@ pub use crate::{
 
 // Credentials
 pub use crate::{
-    CredentialManager,
+    CredentialResolver,
     ResolvedCredential,
     CredentialError,
     AuthConfig,
     CredentialSource,
 };
 
-// Process sandbox
+// Process sandbox (requires agent-runtime feature)
+#[cfg(feature = "agent-runtime")]
 pub use crate::ProcessSandbox;
 
 // Tracing

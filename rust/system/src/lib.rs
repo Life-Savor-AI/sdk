@@ -169,6 +169,18 @@ pub use lifesavor_agent_types::credential::{
 };
 
 // ---------------------------------------------------------------------------
+// Re-exports: Component declaration types (Req 19.1, 19.2)
+// ---------------------------------------------------------------------------
+
+/// Unified component declaration and supporting types.
+pub use lifesavor_agent_types::component_declaration::{
+    ComponentDeclaration,
+    AccessRequest,
+    PermissionScope,
+    ToolSchema,
+};
+
+// ---------------------------------------------------------------------------
 // Re-exports: Tracing macros (Req 23.1)
 // ---------------------------------------------------------------------------
 

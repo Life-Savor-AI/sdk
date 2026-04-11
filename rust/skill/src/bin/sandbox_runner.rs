@@ -17,7 +17,11 @@ use std::path::PathBuf;
 use std::process::{self, Stdio};
 
 use lifesavor_skill_sdk::sandbox_compliance::{ComplianceViolation, SandboxComplianceChecker};
-use lifesavor_skill_sdk::{ProcessSandbox, ProviderManifest, ProviderType, SandboxConfig};
+use lifesavor_skill_sdk::{ProviderManifest, ProviderType, SandboxConfig};
+
+// ProcessSandbox requires the agent-runtime feature.
+#[cfg(feature = "agent-runtime")]
+use lifesavor_skill_sdk::ProcessSandbox;
 
 // ── CLI argument parsing (manual, no clap dependency) ────────────────────
 

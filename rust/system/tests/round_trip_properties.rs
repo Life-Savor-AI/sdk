@@ -20,7 +20,7 @@ use proptest::prelude::*;
 fn arb_provider_type() -> impl Strategy<Value = ProviderType> {
     prop_oneof![
         Just(ProviderType::Llm),
-        Just(ProviderType::VectorStore),
+        Just(ProviderType::MemoryStore),
         Just(ProviderType::Skill),
         Just(ProviderType::Assistant),
     ]
@@ -78,7 +78,7 @@ fn arb_provider_manifest() -> impl Strategy<Value = ProviderManifest> {
                         args: None,
                         transport: None,
                     },
-                    ProviderType::VectorStore => ConnectionConfig {
+                    ProviderType::MemoryStore => ConnectionConfig {
                         base_url: None,
                         region: None,
                         database_url: Some("postgres://localhost/vectors".to_string()),

@@ -10,6 +10,10 @@ homepage = "https://developer.lifesavor.ai"
 keywords = ["lifesavor", "agent", "types", "sdk", "interface"]
 categories = ["development-tools", "api-bindings"]
 
+# NOTE: This crate has no path dependencies on other lifesavor crates.
+# It is the root of the dependency tree and must be published to crates.io
+# first. See ../PUBLISHING.md for the full publishing workflow.
+
 [dependencies]
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }

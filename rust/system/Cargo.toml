@@ -16,6 +16,9 @@ default = []
 analytics = []
 
 [dependencies]
+# For crates.io publishing, replace the path dependency with a version dependency:
+#   lifesavor-agent-types = "0.1"
+# See ../PUBLISHING.md for the full publishing workflow.
 lifesavor-agent-types = { path = "../agent" }
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }

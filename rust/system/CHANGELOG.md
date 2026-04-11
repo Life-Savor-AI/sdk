@@ -5,6 +5,33 @@ All notable changes to this crate will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - Unreleased
+
+### Changed
+
+- **BREAKING**: `SystemComponentType::VectorStore` renamed to `MemoryStore` across all types and serialization
+- **BREAKING**: `ProviderType::VectorStore` renamed to `MemoryStore`
+- **BREAKING**: Per-crate `ComponentDeclaration` replaced with unified type from `lifesavor-agent-types`
+- Dynamic bridge dispatch replaces hard-coded `dispatch_to_component` match statement
+- `stubs.rs` deprecated in favor of registry-based dispatch
+
+### Added
+
+- `ComponentDeclaration` unified type (re-exported from `lifesavor-agent-types`)
+- `SystemComponent::tool_schemas()` method for self-describing component operations
+- `SystemComponent::declaration()` method for component metadata
+- Multi-instance registry support with `register_with_instance_id()`, `get_components_by_type()`, `get_component_by_instance_id()`
+- Instance-qualified MCP tool naming: `system.<type>.<instance_id>.<operation>`
+- JSON-RPC external component support via `ExternalComponentProxy`
+- `bridge_validation` helpers for operation and parameter validation
+- Health reporting types: `ComponentMetrics`, `HealthSummary`, `ResourceUsage`
+
+### Notes
+
+- Path dependencies must be replaced with version dependencies before publishing to crates.io
+- See `../PUBLISHING.md` for the full publishing workflow
+- Publish `lifesavor-agent-types` first, then this crate
+
 ## [0.2.0] - 2026-04-07
 
 ### Changed

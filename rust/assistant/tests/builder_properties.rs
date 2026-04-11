@@ -79,7 +79,7 @@ fn arb_non_assistant_manifest() -> impl Strategy<Value = (ProviderManifest, Prov
     prop::sample::select(vec![
         ProviderType::Llm,
         ProviderType::Skill,
-        ProviderType::VectorStore,
+        ProviderType::MemoryStore,
     ])
     .prop_flat_map(|pt| arb_manifest_with_type(pt).prop_map(move |m| (m, pt)))
 }

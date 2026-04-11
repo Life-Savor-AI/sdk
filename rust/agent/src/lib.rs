@@ -11,3 +11,5 @@ pub mod error_chain;
 pub mod manifest;
 pub mod sandbox;
 pub mod credential;
+pub mod component_declaration;
+pub mod skill_provider;
