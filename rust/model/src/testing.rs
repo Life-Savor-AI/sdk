@@ -42,7 +42,7 @@ pub struct MockProviderEntry {
 /// use lifesavor_model_sdk::ProviderType;
 ///
 /// let mut registry = MockRegistry::new();
-/// registry.register("my-ollama", ProviderType::Llm);
+/// registry.register("my-provider", ProviderType::Llm);
 /// assert!(registry.get_by_type(ProviderType::Llm).is_some());
 /// ```
 pub struct MockRegistry {
@@ -196,11 +196,11 @@ mod tests {
     #[test]
     fn register_and_query_by_type() {
         let mut registry = MockRegistry::new();
-        registry.register("ollama-1", ProviderType::Llm);
+        registry.register("llm-local-1", ProviderType::Llm);
         assert_eq!(registry.len(), 1);
 
         let entry = registry.get_by_type(ProviderType::Llm).unwrap();
-        assert_eq!(entry.instance_name, "ollama-1");
+        assert_eq!(entry.instance_name, "llm-local-1");
         assert_eq!(entry.provider_type, ProviderType::Llm);
         assert_eq!(entry.health_status, HealthStatus::Healthy);
     }
@@ -208,32 +208,32 @@ mod tests {
     #[test]
     fn query_missing_type_returns_none() {
         let mut registry = MockRegistry::new();
-        registry.register("ollama-1", ProviderType::Llm);
+        registry.register("llm-local-1", ProviderType::Llm);
         assert!(registry.get_by_type(ProviderType::Skill).is_none());
     }
 
     #[test]
     fn query_by_name() {
         let mut registry = MockRegistry::new();
-        registry.register("ollama-1", ProviderType::Llm);
-        assert!(registry.get_by_name("ollama-1").is_some());
+        registry.register("llm-local-1", ProviderType::Llm);
+        assert!(registry.get_by_name("llm-local-1").is_some());
         assert!(registry.get_by_name("nonexistent").is_none());
     }
 
     #[test]
     fn set_health_updates_status() {
         let mut registry = MockRegistry::new();
-        registry.register("ollama-1", ProviderType::Llm);
+        registry.register("llm-local-1", ProviderType::Llm);
 
         let updated = registry.set_health(
-            "ollama-1",
+            "llm-local-1",
             HealthStatus::Unhealthy {
                 details: "down".into(),
             },
         );
         assert!(updated);
 
-        let status = registry.health_of("ollama-1").unwrap();
+        let status = registry.health_of("llm-local-1").unwrap();
         assert!(matches!(status, HealthStatus::Unhealthy { .. }));
     }
 
@@ -260,10 +260,10 @@ mod tests {
     #[test]
     fn unregister_removes_provider() {
         let mut registry = MockRegistry::new();
-        registry.register("ollama-1", ProviderType::Llm);
+        registry.register("llm-local-1", ProviderType::Llm);
         assert_eq!(registry.len(), 1);
 
-        let removed = registry.unregister("ollama-1");
+        let removed = registry.unregister("llm-local-1");
         assert!(removed.is_some());
         assert!(registry.is_empty());
     }

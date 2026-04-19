@@ -1,5 +1,5 @@
-// System SDK prelude — import the most commonly used types with a single
-// `use lifesavor_system_sdk::prelude::*;`
+//! System SDK prelude — import the most commonly used types with a single
+//! `use lifesavor_system_sdk::prelude::*;`
 
 // Core trait and types
 pub use crate::{

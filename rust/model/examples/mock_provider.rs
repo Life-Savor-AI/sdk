@@ -234,6 +234,7 @@ async fn main() {
         model: "default".to_string(), // alias → mock-gpt-4
         messages: vec![],
         options: None,
+        tools: None,
     };
 
     let metrics = provider.chat_completion_stream(&request, tx).await.unwrap();

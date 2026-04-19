@@ -54,13 +54,21 @@
 //! let provider = ModelProviderBuilder::new(manifest)?.build();
 //! ```
 
+/// Convenience re-exports of the most commonly used SDK types.
 pub mod prelude;
+/// `ModelProviderBuilder` for scaffold `LlmProvider` implementations from a manifest.
 pub mod builder;
+/// `ComponentHealthReporter` for health status tracking and reporting.
 pub mod health;
+/// SDK-specific error types and conversions.
 pub mod error;
+/// Test utilities and mock providers for component testing.
 pub mod testing;
+/// `SecuritySurfaceReport` generation from provider manifests.
 pub mod security_surface;
+/// Build configuration helpers for `lifesavor-build.yml` integration.
 pub mod build_config;
+/// `component-manifest.toml` parsing and validation.
 pub mod component_manifest;
 
 #[cfg(feature = "analytics")]
@@ -80,20 +88,32 @@ pub use lifesavor_agent::providers::llm_provider::{
     ModelLocality,
     PricingTier,
     LatencyClass,
+    ToolDefinition,
 };
 
 // ---------------------------------------------------------------------------
-// Re-exports: Inference types (Req 3.6)
+// Re-exports: Inference types (Req 1.6, 2.5, 3.6)
 // ---------------------------------------------------------------------------
 
-/// Inference error, metrics, token events, and model load status from the
-/// agent crate's inference engine.
+/// Inference error (including `AuthenticationFailed`, `RateLimited`,
+/// `ProviderUnavailable` variants — Req 2.5), metrics, token events, and
+/// model load status from the agent crate's inference engine.
 pub use lifesavor_agent::inference::{
+    CancellableInference,
     InferenceError,
     InferenceMetrics,
     ModelLoadStatus,
     TokenEvent,
+    content_type,
 };
+
+/// Extended chat message type with optional `images`, `tool_calls`, and
+/// `tool_call_id` fields (Req 1.6).
+pub use lifesavor_agent::inference::ChatMessage;
+
+/// Function call response type returned by models that support tool use
+/// (Req 1.6).
+pub use lifesavor_agent::inference::inference_queue::ToolCall;
 
 // ---------------------------------------------------------------------------
 // Re-exports: Health status (Req 7.5)
@@ -123,6 +143,18 @@ pub use lifesavor_agent::registry::manifest::{
     parse_manifest,
     parse_manifest_file,
     validate_manifest,
+};
+
+// ---------------------------------------------------------------------------
+// Re-exports: Model Profile Integration types (Req 58)
+// ---------------------------------------------------------------------------
+
+/// Model profile types for displaying installed components grouped by
+/// provider type in the web app's model profile settings.
+pub use lifesavor_agent::registry::{
+    ModelProviderType,
+    ModelProfileEntry,
+    ModelProfile,
 };
 
 // ---------------------------------------------------------------------------
@@ -170,6 +202,45 @@ pub use lifesavor_agent::providers::credential_manager::{
 };
 
 // ---------------------------------------------------------------------------
+// Re-exports: RAG provider types (Req 42.1 – 42.8)
+// ---------------------------------------------------------------------------
+
+/// RAG provider trait and request/response types for knowledge base access.
+/// Model components use these types to interact with the agent's knowledge
+/// store via JSON-RPC `rag.search` and `rag.upsert` methods.
+pub use lifesavor_agent::skills::rag_provider::{
+    RagProvider,
+    RagSearchRequest,
+    RagUpsertRequest,
+    RagGetRequest,
+    RagForgetRequest,
+    RagResult,
+    RagProviderStatus,
+};
+
+/// JSON-RPC parameter types for RAG methods.
+pub use lifesavor_agent::jsonrpc::{
+    RagSearchParams,
+    RagUpsertParams,
+};
+
+/// JSON-RPC parameter and result types for vault decrypt (Req 17.4).
+pub use lifesavor_agent::jsonrpc::{
+    VaultDecryptParams,
+    VaultDecryptResult,
+    PII_VAULT_SYSTEM_PROMPT,
+    content_contains_vault_tags,
+};
+
+/// JSON-RPC parameter and result types for inter-component `tools/call`
+/// (Req 23.1 – 23.7, 24.1 – 24.6).
+pub use lifesavor_agent::jsonrpc::{
+    ToolsCallParams,
+    ToolsCallResult,
+    ToolsCallError,
+};
+
+// ---------------------------------------------------------------------------
 // Re-exports: Tracing macros (Req 23.1)
 // ---------------------------------------------------------------------------
 
@@ -178,21 +249,6 @@ pub use tracing::{info, warn, error, debug, trace, instrument};
 
 /// Tracing span type for manual span management.
 pub use tracing::Span;
-
-// ---------------------------------------------------------------------------
-// Feature-gated re-exports: Cloud providers (Req 25.1)
-// ---------------------------------------------------------------------------
-
-/// Ollama provider (always available — local inference).
-pub use lifesavor_agent::providers::llm_provider::OllamaProvider;
-
-/// AWS Bedrock provider (feature-gated behind `bedrock`).
-#[cfg(feature = "bedrock")]
-pub use lifesavor_agent::providers::llm_provider::BedrockProvider;
-
-/// OpenAI-compatible provider (feature-gated behind `openai`).
-#[cfg(feature = "openai")]
-pub use lifesavor_agent::providers::llm_provider::OpenAiCompatibleProvider;
 
 // ---------------------------------------------------------------------------
 // Tracing helper (Req 23.2)

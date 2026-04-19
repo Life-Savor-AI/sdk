@@ -58,19 +58,33 @@
 //!     .expect("valid component");
 //! ```
 
+/// Convenience re-exports of the most commonly used System SDK types.
 pub mod prelude;
+/// `SystemComponentBuilder` for scaffold `SystemComponent` implementations.
 pub mod builder;
+/// Bridge request/response validation helpers.
 pub mod bridge_validation;
+/// `ComponentHealthReporter` for system component health tracking.
 pub mod health;
+/// System SDK error types and conversions.
 pub mod error;
+/// Test utilities and mock system components.
 pub mod testing;
+/// `SecuritySurfaceReport` generation for system components.
 pub mod security_surface;
+/// Build configuration helpers for `lifesavor-build.yml` integration.
 pub mod build_config;
+/// `component-manifest.toml` parsing and validation for system components.
 pub mod component_manifest;
+/// File client for component artifact management.
 pub mod file_client;
+/// Component resolver for dependency resolution.
 pub mod resolver;
+/// MCP tool definition helpers for system component tool registration.
 pub mod mcp;
+/// Standard bridge operation definitions (status, health, config).
 pub mod standard_bridge_ops;
+/// Structured logging helpers for system component lifecycle events.
 pub mod logging;
 
 #[cfg(feature = "analytics")]

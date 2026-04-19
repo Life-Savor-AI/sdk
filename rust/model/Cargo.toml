@@ -13,8 +13,6 @@ readme = "README.md"
 
 [features]
 default = []
-bedrock = []
-openai = []
 analytics = []
 
 [dependencies]

@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `BuildConfigBuilder` and `ComponentManifestBuilder` for Developer Portal integration
 - `span_with_context` tracing helper
 - `AnalyticsReporter` (behind `analytics` feature flag)
-- Feature flags: `bedrock`, `openai`
-- Examples: `ollama_provider`, `mock_provider`, `hot_cold_management`, `sandbox_compliance`
+- Feature flag: `analytics`
+- Re-exports of extended `ChatMessage` (with `images`, `tool_calls`, `tool_call_id`), `ToolCall`, `ToolDefinition`
+- Re-exports of new `InferenceError` variants: `AuthenticationFailed`, `RateLimited`, `ProviderUnavailable`
+- Examples: `native_provider`, `mock_provider`, `hot_cold_management`, `sandbox_compliance`
 - Templates: `lifesavor-build.yml`, `component-manifest.toml`, `README.md`

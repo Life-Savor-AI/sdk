@@ -2,7 +2,9 @@
 
 Build first-party system components for the Life Savor agent using the `SystemComponent` trait.
 
-System components are privileged, in-process modules that provide core agent capabilities such as TTS, STT, file storage, messaging, caching, and device control. Unlike third-party providers, system components run without sandbox restrictions and have direct access to agent internals.
+System components are privileged, in-process modules that provide core agent capabilities such as TTS/Voice (speech-to-text and text-to-speech), file storage, messaging, caching, and device control. Unlike third-party providers, system components run without sandbox restrictions and have direct access to agent internals.
+
+Voice/TTS model components (Whisper, XTTS-v2, Bark, StyleTTS2) implement `SystemComponent` rather than `LlmProvider` since they process audio rather than text. See the [Voice/TTS Development](#voicetts-component-development) section below.
 
 ## Target Trait
 
@@ -130,7 +132,120 @@ External:     your-component → JSON-RPC → agent → ExternalComponentProxy �
 
 The agent supports **multi-instance** components — multiple instances of the same `SystemComponentType` can coexist, each with a unique instance ID (e.g., `memory_store:sqlite-vec-rag`, `memory_store:mempalace-personal`).
 
-See the [SDK architecture docs](../../docs/ARCHITECTURE.md) for the full dependency graph.
+---
+
+## Voice/TTS Component Development
+
+Voice and TTS model components use the System SDK because they process audio rather than text. There are four Voice/TTS components in the platform:
+
+| Component | Type | Operation | Description |
+|-----------|------|-----------|-------------|
+| `whisper-large-v3` | ASR | `transcribe` | Audio → text transcription |
+| `xtts-v2` | TTS | `synthesize` | Text → speech synthesis |
+| `bark` | TTS | `synthesize` | Text → speech synthesis |
+| `styletts2` | TTS | `synthesize` | Text → speech synthesis |
+
+### SystemComponent Trait for Voice
+
+Voice components implement the `SystemComponent` trait:
+
+```rust
+use lifesavor_system_sdk::prelude::*;
+use async_trait::async_trait;
+
+pub struct MyVoiceComponent {
+    config: VoiceConfig,
+}
+
+#[async_trait]
+impl SystemComponent for MyVoiceComponent {
+    fn name(&self) -> &str { "my-voice-model" }
+
+    fn component_type(&self) -> SystemComponentType {
+        SystemComponentType::Voice
+    }
+
+    async fn initialize(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Load the audio model, initialize inference backend
+        Ok(())
+    }
+
+    async fn health_check(&self) -> ComponentHealthStatus {
+        ComponentHealthStatus::Healthy
+    }
+
+    async fn shutdown(&self) -> Result<(), Box<dyn std::error::Error>> {
+        // Release model resources
+        Ok(())
+    }
+}
+```
+
+### Bridge Operations
+
+Voice components expose audio-specific bridge operations instead of LLM operations:
+
+- **`transcribe`** (ASR) — accepts audio input (WAV/MP3/FLAC), returns transcribed text
+- **`synthesize`** (TTS) — accepts text input, returns audio data
+
+### MCP Tool Registration
+
+Each Voice component registers MCP tools prefixed with its model ID:
+
+```rust
+// ASR: whisper-large-v3.transcribe
+// TTS: xtts-v2.synthesize, bark.synthesize, styletts2.synthesize
+```
+
+### Audio Streaming
+
+Voice components use `StreamingEnvelope` with `content_type: "audio"` for WebSocket streaming of audio output. This integrates with the agent's multimodal streaming support.
+
+### Marketplace Metadata
+
+Voice components use `category = "Voice"` in `marketplace.toml`:
+
+```toml
+[component]
+id = "whisper-large-v3"
+category = "Voice"
+
+[model]
+specialization = "asr"  # or "tts"
+```
+
+### Provider Manifest
+
+```toml
+provider_type = "system"
+instance_name = "whisper-large-v3"
+sdk_version = "0.5.0"
+locality = "local"
+
+[connection]
+endpoint = "native://whisper-large-v3"
+
+[auth]
+strategy = "none"
+
+[health_check]
+method = "process_alive"
+interval_seconds = 30
+timeout_seconds = 5
+```
+
+### Key Differences from LLM Components
+
+| Aspect | LLM Component | Voice/TTS Component |
+|--------|--------------|-------------------|
+| SDK | `lifesavor-model-sdk` | `lifesavor-system-sdk` |
+| Trait | `LlmProvider` | `SystemComponent` |
+| Operations | `chat`, `generate`, `embeddings` | `transcribe`, `synthesize` |
+| Input/Output | Text ↔ Text | Audio ↔ Text |
+| Category | `"Llm"` | `"Voice"` |
+| Provider Type | `"llm"` | `"system"` |
+
+See the [Model SDK Provider Patterns](../model/docs/PROVIDER_PATTERNS.md) guide for the full TTS/Voice pattern documentation with code examples.
 
 ## License
 

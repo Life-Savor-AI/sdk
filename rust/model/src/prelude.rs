@@ -1,10 +1,13 @@
-// Model SDK prelude — import the most commonly used types with a single
-// `use lifesavor_model_sdk::prelude::*;`
+//! Model SDK prelude — import the most commonly used types with a single
+//! `use lifesavor_model_sdk::prelude::*;`
 
 // Core trait and types
 pub use crate::{
     LlmProvider,
     ChatRequest,
+    ChatMessage,
+    ToolCall,
+    ToolDefinition,
     ModelInfo,
     CapabilityDescriptor,
     ModelCapability,
@@ -15,10 +18,12 @@ pub use crate::{
 
 // Inference
 pub use crate::{
+    CancellableInference,
     InferenceError,
     InferenceMetrics,
     ModelLoadStatus,
     TokenEvent,
+    content_type,
 };
 
 // Streaming
@@ -54,18 +59,18 @@ pub use crate::{
     CredentialSource,
 };
 
+// RAG provider types (Req 42)
+pub use crate::{
+    RagSearchRequest,
+    RagUpsertRequest,
+    RagResult,
+    RagProviderStatus,
+    RagSearchParams,
+    RagUpsertParams,
+};
+
 // Process sandbox
 pub use crate::ProcessSandbox;
-
-// Ollama provider (always available)
-pub use crate::OllamaProvider;
-
-// Cloud provider types (feature-gated)
-#[cfg(feature = "bedrock")]
-pub use crate::BedrockProvider;
-
-#[cfg(feature = "openai")]
-pub use crate::OpenAiCompatibleProvider;
 
 // Tracing
 pub use tracing::{info, warn, error, debug, trace, instrument};
